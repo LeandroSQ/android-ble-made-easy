@@ -459,6 +459,7 @@ class BluetoothMadeEasy {
 
 			// Establishes a bluetooth connection to the specified device
 			val connection = BluetoothConnection(device)
+			connection.verbose = this.verbose
 			connection.establish(this.context) { successful ->
 				if (successful) {
 					log("Connected successfully with ${device.address}!")

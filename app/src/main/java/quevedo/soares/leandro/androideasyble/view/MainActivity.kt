@@ -1,5 +1,6 @@
 package quevedo.soares.leandro.androideasyble.view
 
+import android.annotation.SuppressLint
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanSettings
 import android.os.Bundle
@@ -38,11 +39,12 @@ class MainActivity : AppCompatActivity() {
 		handlePermissions()
 	}
 
+	@SuppressLint("MissingPermission")
 	private fun handlePermissions() {
 		Log.d("MainActivity", "Verifying permissions state...")
 
 		// Check if all the bluetooth permissions are granted, and request them if not
-		this.bluetooth.verifyPermissions(
+		this.bluetooth.verifyPermissionsAsync(
 
 				rationaleRequestCallback = {
 					showToast("We need the bluetooth permissions!")
@@ -65,7 +67,7 @@ class MainActivity : AppCompatActivity() {
 		Log.d("MainActivity", "Verifying bluetooth adapter state...")
 
 		// Check if the bluetooth adapter is enabled, and request to enable it if not
-		this.bluetooth.verifyBluetoothAdapterState {
+		this.bluetooth.verifyBluetoothAdapterStateAsync {
 			if (it) {
 				startScan()
 			} else {

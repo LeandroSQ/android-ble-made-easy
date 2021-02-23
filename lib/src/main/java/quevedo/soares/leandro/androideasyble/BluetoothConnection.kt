@@ -2,6 +2,8 @@ package quevedo.soares.leandro.androideasyble
 
 import android.bluetooth.*
 import android.content.Context
+import android.os.Build.VERSION
+import android.os.Build.VERSION_CODES
 import android.util.Log
 import quevedo.soares.leandro.androideasyble.typealiases.Callback
 import quevedo.soares.leandro.androideasyble.typealiases.EmptyCallback
@@ -12,8 +14,11 @@ import java.util.*
 class BluetoothConnection(private val device: BluetoothDevice) {
 
 	private var genericAttributeProfile: BluetoothGatt? = null
+	private var closingConnection: Boolean = false
 	private var connectionActive: Boolean = false
 	private var connectionCallback: Callback<Boolean>? = null
+
+	var verbose: Boolean = false
 
 	/***
 	 * Called whenever a successful connection is established
@@ -30,7 +35,11 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 	 ***/
 	val isActive get() = this.connectionActive
 
-	// region Private utility related methods
+	// region Utility related methods
+	private fun log(message: String) {
+		if (this.verbose) Log.d("BluetoothConnection", message)
+	}
+
 	private fun setupGattCallback(): BluetoothGattCallback {
 		return object : BluetoothGattCallback() {
 
@@ -38,6 +47,8 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 				super.onConnectionStateChange(gatt, status, newState)
 
 				if (newState == BluetoothProfile.STATE_CONNECTED) {
+					log("Device ${device.address} connected!")
+
 					// Notifies that the connection has been established
 					connectionActive = true
 					onConnect?.invoke()
@@ -45,9 +56,24 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 					// Starts the services discovery
 					genericAttributeProfile?.discoverServices()
 				} else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-					// Notifies that the connection has been lost
-					connectionActive = false
-					onDisconnect?.invoke()
+					// HACK: Workaround for Lollipop 21 and 22
+					if (closingConnection) {
+						log("Disconnected succesfully from ${device.address}!\nClosing connection...")
+
+						try {
+							connectionActive = false
+							genericAttributeProfile?.close()
+							genericAttributeProfile = null
+						} catch (e: Exception) {
+							log("Ignoring closing connection with ${device.address} exception -> ${e.message}")
+						}
+					} else {
+						log("Lost connection with ${device.address}")
+
+						// Notifies that the connection has been lost
+						connectionActive = false
+						onDisconnect?.invoke()
+					}
 				}
 			}
 
@@ -162,6 +188,15 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 	fun read(characteristic: String, charset: Charset = Charsets.UTF_8): String? = this.read(characteristic)?.let { String(it, charset) }
 	// endregion
 
+	// region Workaround for lollipop
+	private fun isLollipop() = VERSION.SDK_INT >= VERSION_CODES.LOLLIPOP && VERSION.SDK_INT <= VERSION_CODES.LOLLIPOP_MR1
+
+	private fun startDisconnection() {
+		this.closingConnection = true
+		this.genericAttributeProfile?.disconnect()
+	}
+	// endregion
+
 	// region Connection handling related methods
 	internal fun establish(context: Context, callback: Callback<Boolean>) {
 		this.connectionCallback = {
@@ -176,11 +211,17 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 	 * Closes the connection
 	 ***/
 	fun close() {
-		this.connectionCallback?.invoke(false)
+		// HACK: Workaround for Lollipop 21 and 22
+		if (isLollipop()) {
+startDisconnection()
+		} else {
+			this.closingConnection = true
+			this.connectionCallback?.invoke(false)
 
-		this.genericAttributeProfile?.disconnect()
-		this.genericAttributeProfile?.close()
-		this.genericAttributeProfile = null
+			this.genericAttributeProfile?.disconnect()
+			this.genericAttributeProfile?.close()
+			this.genericAttributeProfile = null
+		}
 	}
 	// endregion
 
