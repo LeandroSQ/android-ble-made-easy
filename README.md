@@ -37,7 +37,7 @@ dependencies {
 
 The library accepts being used both in an Activity and a Fragment!
 
-```
+```kotlin
 val ble = BluetoothMadeEasy(activity = this)
 // or
 val ble = BluetoothMadeEasy(fragment = this)
