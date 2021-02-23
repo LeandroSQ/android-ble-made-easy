@@ -132,7 +132,7 @@ class BluetoothMadeEasy {
 	 * @param callback Called with a boolean parameter indicating the permission request state
 	 ***/
 	@RequiresPermission(allOf = [permission.BLUETOOTH, permission.BLUETOOTH_ADMIN, permission.ACCESS_FINE_LOCATION])
-	fun verifyPermissionsAsync(rationaleRequestCallback: EmptyCallback? = null, callback: PermissionRequestCallback? = null) {
+	fun verifyPermissionsAsync(rationaleRequestCallback: Callback<EmptyCallback>? = null, callback: PermissionRequestCallback? = null) {
 		this.log("Checking App bluetooth permissions...")
 
 		if (PermissionUtils.isEveryBluetoothPermissionsGranted(this.context)) {
@@ -141,7 +141,11 @@ class BluetoothMadeEasy {
 		} else {
 			if (PermissionUtils.isPermissionRationaleNeeded(this.activity ?: this.fragment?.requireActivity()!!) && rationaleRequestCallback != null) {
 				this.log("Permissions denied, requesting permission rationale callback...")
-				rationaleRequestCallback()
+				rationaleRequestCallback {
+					requestPermissions { granted ->
+						callback?.invoke(granted)
+					}
+				}
 			} else {
 				requestPermissions { granted ->
 					callback?.invoke(granted)
@@ -161,7 +165,7 @@ class BluetoothMadeEasy {
 	 * @return True when all the permissions are granted
 	 ***/
 	@RequiresPermission(allOf = [permission.BLUETOOTH, permission.BLUETOOTH_ADMIN, permission.ACCESS_FINE_LOCATION])
-	suspend fun verifyPermissions(rationaleRequestCallback: EmptyCallback? = null): Boolean {
+	suspend fun verifyPermissions(rationaleRequestCallback: Callback<EmptyCallback>? = null): Boolean {
 		return suspendCancellableCoroutine { continuation ->
 			this.verifyPermissionsAsync(rationaleRequestCallback) { status ->
 				if (status) continuation.resume(true)

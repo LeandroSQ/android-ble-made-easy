@@ -47,8 +47,9 @@ val ble = BluetoothMadeEasy(fragment = this)
 
 The library requests the permissions for you.
 
+Asynchronous:
 ```kotlin
-ble.verifyPermissions(
+ble.verifyPermissionsAsync(
     rationaleRequestCallback = { next ->
         // Include your code to show an Alert or UI explaining why the permissions are required
         // Calling the function bellow if the user agrees to give the permissions
@@ -64,13 +65,44 @@ ble.verifyPermissions(
 )
 ```
 
+Coroutines:
+```kotlin
+GlobalScope.launch {
+    val granted = ble.verifyPermissions(
+        rationaleRequestCallback = { next ->
+            // Include your code to show an Alert or UI explaining why the permissions are required
+            // Calling the function bellow if the user agrees to give the permissions
+            next()
+        }
+    )
+
+    if (granted) {
+        // Continue your code....
+    } else {
+        // Include your code to show an Alert or UI indicating that the permissions are required
+    }
+}
+```
+
 ### Automatic turn on the Bluetooth adapter
 
 The library requests the Bluetooth hardware to be activated whenever it is off.
 
+Asynchronous:
 ```kotlin
-ble.verifyBluetoothAdapterState { active ->
+ble.verifyBluetoothAdapterStateAsync { active ->
     if (active) {
+        // Continue your code...
+    } else {
+        // Include your code to show an Alert or UI indicating that the Bluetooth adapter is required to be on in order to your project work
+    }
+}
+```
+
+Coroutines:
+```kotlin
+GlobalScope.launch {
+    if (ble.verifyBluetoothAdapterState()) {
         // Continue your code...
     } else {
         // Include your code to show an Alert or UI indicating that the Bluetooth adapter is required to be on in order to your project work
