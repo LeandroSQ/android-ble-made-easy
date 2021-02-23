@@ -9,7 +9,7 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: Generate Documention with Dokka
-      - uses: OrangeLabs-moe/gradle-actions@v5.0-openjdk-15
+        uses: OrangeLabs-moe/gradle-actions@v5.0-openjdk-15
         with:
           args: lib:dokkaGfm
 
@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v1
       - name: Upload Documentation to Wiki
-      - uses: SwiftDocOrg/github-wiki-publish-action@v1
+        uses: SwiftDocOrg/github-wiki-publish-action@v1
         with:
           path: "lib/build/dokka/gfm/lib"
         env:
