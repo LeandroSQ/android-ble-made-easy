@@ -1,0 +1,26 @@
+on: 
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  dokka:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: Generate Documention with Dokka
+      - uses: OrangeLabs-moe/gradle-actions@v5.0-openjdk-15
+        with:
+          args: lib:dokkaGfm
+
+  wiki:
+    needs: dokka
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Upload Documentation to Wiki
+        uses: SwiftDocOrg/github-wiki-publish-action@v1
+        with:
+          path: "lib/build/dokka/gfm/lib"
+        env:
+          GH_PERSONAL_ACCESS_TOKEN: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
