@@ -19,7 +19,7 @@ allprojects {
 dependencies {
     ...
 
-    implementation 'com.github.LeandroSQ:location-made-easy:<VERSION>'
+    implementation 'com.github.LeandroSQ:android-ble-made-easy:<VERSION>'
 
     ...
 }
