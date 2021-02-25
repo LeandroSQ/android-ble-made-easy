@@ -114,6 +114,8 @@ You can both use the library with callbacks and with coroutines suspended functi
 The callback functions having the 'async' suffix.
 And requiring a HOF callback as a parameter .
 
+Handling the bluetooth connections with graceful connection shutdown, in another words, waits for current running operations (Read and Write) to be finished before closing the connection
+
 ### JetPack Contracts Ready!
 
 The library uses the new JetPack contracts API to automatically handle permissions and adapter activation for you.
@@ -147,21 +149,25 @@ After instantiating the class `BluetoothMadeEasy`...
 ### Fast scan for a specific device
 
 If you already know the device you wanna connect to, you could use this:
-```kotlin
-// You can specify filters for your device, being them 'macAddress', 'service' and 'name'
-val connection = ble.scanFor(
-    // You only need to supply one of these, no need for all of them!
-    macAddress = "00:00:00:00",
-    name = "ESP32",
-    service = "00000000-0000-0000-0000-000000000000"
-)
 
-// And it will automatically connect to your device, no need to boilerplate
-if (connection != null) {
-    // And you can continue with your code
-    it.write("00000000-0000-0000-0000-000000000000", "Testing")
-} else {
-    // Show an Alert or UI with your preferred error message about the device not being available
+Coroutines:
+```kotlin
+GlobalScope.launch {
+    // You can specify filters for your device, being them 'macAddress', 'service' and 'name'
+    val connection = ble.scanFor(
+        // You only need to supply one of these, no need for all of them!
+        macAddress = "00:00:00:00",
+        name = "ESP32",
+        service = "00000000-0000-0000-0000-000000000000"
+    )
+
+    // And it will automatically connect to your device, no need to boilerplate
+    if (connection != null) {
+        // And you can continue with your code
+        it.write("00000000-0000-0000-0000-000000000000", "Testing")
+    } else {
+        // Show an Alert or UI with your preferred error message about the device not being available
+    }
 }
 ```
 
@@ -229,4 +235,4 @@ ble.connect(device)?.let { connection ->
 }
 ```
 
-_Made with ❤️ by Leandro Quevedo_
+_Made With <3 by Leandro Quevedo_

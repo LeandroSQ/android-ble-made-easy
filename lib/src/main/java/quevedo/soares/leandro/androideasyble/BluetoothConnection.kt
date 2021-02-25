@@ -5,10 +5,15 @@ import android.content.Context
 import android.os.Build.VERSION
 import android.os.Build.VERSION_CODES
 import android.util.Log
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import quevedo.soares.leandro.androideasyble.exceptions.ConnectionClosingException
 import quevedo.soares.leandro.androideasyble.typealiases.Callback
 import quevedo.soares.leandro.androideasyble.typealiases.EmptyCallback
 import java.nio.charset.Charset
 import java.util.*
+import java.util.concurrent.atomic.AtomicInteger
 
 @Suppress("unused")
 class BluetoothConnection(private val device: BluetoothDevice) {
@@ -17,6 +22,7 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 	private var closingConnection: Boolean = false
 	private var connectionActive: Boolean = false
 	private var connectionCallback: Callback<Boolean>? = null
+	private var operationsInQueue: AtomicInteger = AtomicInteger(0)
 
 	var verbose: Boolean = false
 
@@ -58,15 +64,7 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 				} else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
 					// HACK: Workaround for Lollipop 21 and 22
 					if (closingConnection) {
-						log("Disconnected succesfully from ${device.address}!\nClosing connection...")
-
-						try {
-							connectionActive = false
-							genericAttributeProfile?.close()
-							genericAttributeProfile = null
-						} catch (e: Exception) {
-							log("Ignoring closing connection with ${device.address} exception -> ${e.message}")
-						}
+						endDisconnection()
 					} else {
 						log("Lost connection with ${device.address}")
 
@@ -80,12 +78,14 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 			override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
 				super.onServicesDiscovered(gatt, status)
 
-				if (status == BluetoothGatt.GATT_SUCCESS) {
-					connectionCallback?.invoke(true)
-				} else {
-					Log.e("BluetoothConnection", "Error while discovering services at ${device.address}! Status: $status")
-					close()
-					connectionCallback?.invoke(false)
+				GlobalScope.launch {
+					if (status == BluetoothGatt.GATT_SUCCESS) {
+						connectionCallback?.invoke(true)
+					} else {
+						Log.e("BluetoothConnection", "Error while discovering services at ${device.address}! Status: $status")
+						close()
+						connectionCallback?.invoke(false)
+					}
 				}
 			}
 
@@ -109,6 +109,21 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 	}
 	// endregion
 
+	// region Operation queue related methods
+	private fun beginOperation() {
+		// Don't allow operations while closing an active connection
+		if (closingConnection) throw ConnectionClosingException()
+
+		// Increment the amount of operations
+		this.operationsInQueue.incrementAndGet()
+	}
+
+	private fun finishOperation() {
+		// Decrement the amount of operations, because the current operation has finished
+		this.operationsInQueue.decrementAndGet()
+	}
+	// endregion
+
 	// region Value writing related methods
 	/***
 	 * Performs a write operation on a specific characteristic
@@ -120,6 +135,8 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 	 * @return True when successfully written the specified value
 	 ***/
 	fun write(characteristic: String, message: ByteArray): Boolean {
+		this.beginOperation()
+
 		val characteristicUuid = UUID.fromString(characteristic)
 
 		genericAttributeProfile?.let { gatt ->
@@ -127,13 +144,16 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 				service.characteristics.forEach { characteristic ->
 					if (characteristic.uuid == characteristicUuid) {
 						characteristic.value = message
-						return gatt.writeCharacteristic(characteristic)
+						return gatt.writeCharacteristic(characteristic).also {
+							this.finishOperation()
+						}
 					}
 				}
 			}
 		}
 
 		Log.e("BluetoothConnection", "Characteristic $characteristic not found on device ${device.address}!")
+		this.finishOperation()
 		return false
 	}
 
@@ -160,19 +180,27 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 	 * @return A nullable [ByteArray], null when failed to read
 	 ***/
 	fun read(characteristic: String): ByteArray? {
+		this.beginOperation()
+
 		// Null safe let of the generic attribute profile
 		genericAttributeProfile?.let { gatt ->
 			// Searches for the characteristic
 			val c = this.getCharacteristic(gatt, characteristic)
 			if (c != null) {
 				// Tries to read its value, if successful return it
-				if (gatt.readCharacteristic(c)) return c.value
-				else Log.e("BluetoothConnection", "Failed to read characteristic $characteristic on device ${device.address}")
+				if (gatt.readCharacteristic(c)) {
+					return c.value.also {
+						this.finishOperation()
+					}
+				} else {
+					Log.e("BluetoothConnection", "Failed to read characteristic $characteristic on device ${device.address}")
+				}
 			} else {
 				Log.e("BluetoothConnection", "Characteristic $characteristic not found on device ${device.address}!")
 			}
 		}
 
+		this.finishOperation()
 		return null
 	}
 
@@ -189,17 +217,40 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 	// endregion
 
 	// region Workaround for lollipop
-	private fun isLollipop() = VERSION.SDK_INT >= VERSION_CODES.LOLLIPOP && VERSION.SDK_INT <= VERSION_CODES.LOLLIPOP_MR1
+	private fun isLollipop() = VERSION.SDK_INT >= VERSION_CODES.LOLLIPOP && VERSION.SDK_INT <= VERSION_CODES.M
 
 	private fun startDisconnection() {
-		this.closingConnection = true
-		this.genericAttributeProfile?.disconnect()
+		try {
+			this.closingConnection = true
+			this.genericAttributeProfile?.disconnect()
+		} catch (e: Exception) {
+			e.printStackTrace()
+		}
+	}
+
+	private fun endDisconnection() {
+		log("Disconnected succesfully from ${device.address}!\nClosing connection...")
+
+		try {
+			connectionActive = false
+			connectionCallback?.invoke(false)
+			genericAttributeProfile?.close()
+			genericAttributeProfile = null
+			closingConnection = false
+		} catch (e: Exception) {
+			log("Ignoring closing connection with ${device.address} exception -> ${e.message}")
+		}
 	}
 	// endregion
 
 	// region Connection handling related methods
 	internal fun establish(context: Context, callback: Callback<Boolean>) {
 		this.connectionCallback = {
+			// Clear the operations queue
+			closingConnection = false
+			operationsInQueue.set(0)
+
+			// Calls the external connection callback
 			callback(it)
 			connectionCallback = null
 		}
@@ -210,18 +261,19 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 	/***
 	 * Closes the connection
 	 ***/
-	fun close() {
-		// HACK: Workaround for Lollipop 21 and 22
-		if (isLollipop()) {
-startDisconnection()
-		} else {
-			this.closingConnection = true
-			this.connectionCallback?.invoke(false)
-
-			this.genericAttributeProfile?.disconnect()
-			this.genericAttributeProfile?.close()
-			this.genericAttributeProfile = null
+	suspend fun close() {
+		// Wait for ongoing operations to finish before closing the connection
+		// Has a counter of 20 times 500ms each
+		// Being 10s in total of timeout
+		var counter = 0
+		while (operationsInQueue.get() > 0 && counter < 20) {
+			log("${operationsInQueue.get()} operations in queue! Waiting for 500ms (${counter * 500}ms elapsed)")
+			delay(500)
+			counter++
 		}
+
+		// HACK: Workaround for Lollipop 21 and 22
+		startDisconnection()
 	}
 	// endregion
 

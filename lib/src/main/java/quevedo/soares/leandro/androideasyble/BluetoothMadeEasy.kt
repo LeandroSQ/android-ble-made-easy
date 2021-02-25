@@ -7,15 +7,18 @@ import android.bluetooth.BluetoothManager
 import android.bluetooth.le.*
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.ParcelUuid
 import android.util.Log
 import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions
-import androidx.activity.result.launch
 import androidx.annotation.RequiresFeature
 import androidx.annotation.RequiresPermission
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
-import kotlinx.coroutines.*
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import quevedo.soares.leandro.androideasyble.contracts.BluetoothAdapterContract
 import quevedo.soares.leandro.androideasyble.exceptions.*
 import quevedo.soares.leandro.androideasyble.typealiases.Callback
@@ -23,7 +26,6 @@ import quevedo.soares.leandro.androideasyble.typealiases.EmptyCallback
 import quevedo.soares.leandro.androideasyble.typealiases.PermissionRequestCallback
 import quevedo.soares.leandro.androideasyble.utils.PermissionUtils
 import java.util.*
-import java.util.concurrent.TimeoutException
 import kotlin.coroutines.resume
 
 internal const val DEFAULT_TIMEOUT = 10000L
@@ -41,6 +43,10 @@ class BluetoothMadeEasy {
 	private var manager: BluetoothManager? = null
 	private var adapter: BluetoothAdapter? = null
 	private var scanner: BluetoothLeScanner? = null
+
+	/* Contracts */
+	private lateinit var adapterContract: ContractHandler<Unit, Boolean>
+	private lateinit var permissionContract: ContractHandler<Array<String>, Map<String, Boolean>>
 
 	/* Scan related variables */
 	private var isScanRunning = false
@@ -80,10 +86,36 @@ class BluetoothMadeEasy {
 
 	private fun setup() {
 		this.verifyBluetoothHardwareFeature()
+		this.registerContracts()
 
 		this.manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
 		this.adapter = this.manager?.adapter
 		this.scanner = this.adapter?.bluetoothLeScanner
+	}
+	// endregion
+
+	// region Contracts related methods
+	private fun registerContracts() {
+		this.adapterContract = ContractHandler(BluetoothAdapterContract(), this.activity, this.fragment)
+		this.permissionContract = ContractHandler(RequestMultiplePermissions(), this.activity, this.fragment)
+	}
+
+	private fun launchPermissionRequestContract(callback: PermissionRequestCallback) {
+		this.log("Requesting permissions to the user...")
+
+		this.permissionContract.launch(PermissionUtils.permissions) { permissions: Map<String, Boolean> ->
+			this.log("Permission request result: $permissions")
+			callback(permissions.all { it.value })
+		}
+	}
+
+	private fun launchBluetoothAdapterActivationContract(callback: PermissionRequestCallback? = null) {
+		this.log("Requesting to enable bluetooth adapter to the user...")
+
+		this.adapterContract.launch(Unit) { enabled ->
+			this.log("Bluetooth adapter activation request result: $enabled")
+			callback?.invoke(enabled)
+		}
 	}
 	// endregion
 
@@ -103,24 +135,6 @@ class BluetoothMadeEasy {
 	// endregion
 
 	// region Permission related methods
-	private fun requestPermissions(callback: PermissionRequestCallback) {
-		this.log("Requesting permissions to the user...")
-
-		if (this.activity != null) {
-			// Registers the contract for the activity
-			this.activity?.registerForActivityResult(RequestMultiplePermissions()) { permissions ->
-				this.log("Permission request result: $permissions")
-				callback(permissions.all { it.value })
-			}?.launch(PermissionUtils.permissions)
-		} else {
-			// Registers the contract for the fragment
-			this.fragment?.registerForActivityResult(RequestMultiplePermissions()) { permissions ->
-				this.log("Permission request result: $permissions")
-				callback(permissions.all { it.value })
-			}?.launch(PermissionUtils.permissions)
-		}
-	}
-
 	/***
 	 * Checks if the following permissions are granted: [permission.BLUETOOTH], [permission.BLUETOOTH_ADMIN] and [permission.ACCESS_FINE_LOCATION]
 	 *
@@ -142,12 +156,12 @@ class BluetoothMadeEasy {
 			if (PermissionUtils.isPermissionRationaleNeeded(this.activity ?: this.fragment?.requireActivity()!!) && rationaleRequestCallback != null) {
 				this.log("Permissions denied, requesting permission rationale callback...")
 				rationaleRequestCallback {
-					requestPermissions { granted ->
+					launchPermissionRequestContract { granted ->
 						callback?.invoke(granted)
 					}
 				}
 			} else {
-				requestPermissions { granted ->
+				launchPermissionRequestContract { granted ->
 					callback?.invoke(granted)
 				}
 			}
@@ -176,24 +190,6 @@ class BluetoothMadeEasy {
 	// endregion
 
 	// region Adapter enabling related methods
-	private fun requestBluetoothAdapterEnable(callback: PermissionRequestCallback? = null) {
-		this.log("Requesting to enable bluetooth adapter to the user...")
-
-		if (this.activity != null) {
-			// Registers the contract for the activity
-			this.activity?.registerForActivityResult(BluetoothAdapterContract()) { enabled ->
-				this.log("Bluetooth adapter activation request result: $enabled")
-				callback?.invoke(enabled)
-			}?.launch()
-		} else {
-			// Registers the contract for the fragment
-			this.fragment?.registerForActivityResult(BluetoothAdapterContract()) { enabled ->
-				this.log("Bluetooth adapter activation request result: $enabled")
-				callback?.invoke(enabled)
-			}?.launch()
-		}
-	}
-
 	/***
 	 * Checks if the bluetooth adapter is active
 	 *
@@ -209,7 +205,7 @@ class BluetoothMadeEasy {
 
 		if (this.adapter == null || this.adapter?.isEnabled != true) {
 			this.log("Bluetooth adapter turned off!")
-			requestBluetoothAdapterEnable(callback)
+			launchBluetoothAdapterActivationContract(callback)
 		} else callback?.invoke(true)
 	}
 
@@ -327,7 +323,7 @@ class BluetoothMadeEasy {
 	 *
 	 * If only one device is required consider using [scanFor]
 	 *
-	 * @see scan For a variation using using callbacks
+	 * @see scan For a variation using callbacks
 	 *
 	 * @param filters Used to specify attributes of the devices on the scan
 	 * @param settings Native object to specify the scan settings (The default setting is only recommended for really fast scans)
@@ -341,7 +337,7 @@ class BluetoothMadeEasy {
 	@RequiresPermission(permission.BLUETOOTH_ADMIN)
 	suspend fun scan(filters: List<ScanFilter>? = null, settings: ScanSettings? = null, duration: Long = DEFAULT_TIMEOUT): Array<BluetoothDevice> {
 		return suspendCancellableCoroutine { continuation ->
-			runBlocking {
+			GlobalScope.launch {
 				// Validates the duration
 				if (duration <= 0) continuation.cancel(IllegalArgumentException("In order to run a synchronous scan you'll need to specify a duration greater than 0ms!"))
 
@@ -364,6 +360,41 @@ class BluetoothMadeEasy {
 	 * Scans for a single bluetooth device and automatically connects with it
 	 * Requires at least one filter being them: [macAddress], [service] and [name]
 	 *
+	 * @see scanFor For a variation using coroutines suspended functions
+	 *
+	 * Filters:
+	 * @param macAddress Optional filter, if provided searches for the specified mac address
+	 * @param service Optional filter, if provided searches for the specified service uuid
+	 * @param name Optional filter, if provided searches for the specified device name
+	 *
+	 * @param settings Native object to specify the scan settings (The default setting is only recommended for really fast scans)
+	 * @param timeout Scan time limit, when exceeded throws an [ScanTimeoutException]
+	 *
+	 * @throws ScanTimeoutException When the [timeout] is reached
+	 * @throws ScanFailureException When an error occurs
+	 *
+	 * @return A nullable [BluetoothConnection] instance, when null meaning that the specified device was not found
+	 ***/
+	suspend fun scanForAsync(macAddress: String? = null, service: String? = null, name: String? = null, settings: ScanSettings? = null, timeout: Long = DEFAULT_TIMEOUT, onFinish: Callback<BluetoothConnection?>? = null, onError: Callback<Int>? = null) {
+		GlobalScope.launch {
+			try {
+				onFinish?.invoke(scanFor (macAddress, service, name, settings, timeout))
+			} catch (e: ScanTimeoutException) {
+				onFinish?.invoke(null)
+			} catch(e: ScanFailureException) {
+				onError?.invoke(e.code)
+			} catch (e: Exception) {
+				onError?.invoke(-1)
+			}
+		}
+	}
+
+	/***
+	 * Scans for a single bluetooth device and automatically connects with it
+	 * Requires at least one filter being them: [macAddress], [service] and [name]
+	 *
+	 * @see scanForAsync For a variation using callbacks
+	 *
 	 * Filters:
 	 * @param macAddress Optional filter, if provided searches for the specified mac address
 	 * @param service Optional filter, if provided searches for the specified service uuid
@@ -378,47 +409,71 @@ class BluetoothMadeEasy {
 	 * @return A nullable [BluetoothConnection] instance, when null meaning that the specified device was not found
 	 ***/
 	suspend fun scanFor(macAddress: String? = null, service: String? = null, name: String? = null, settings: ScanSettings? = null, timeout: Long = DEFAULT_TIMEOUT): BluetoothConnection? {
-		// Validates the arguments
-		if (macAddress == null && service == null && name == null) throw IllegalArgumentException("You need to specify at least one filter!\nBeing them: macAddress, service and name")
-
 		return suspendCancellableCoroutine { continuation ->
-			// Instantiate a new ScanCallback object
-			setupScanCallback(
-				onDiscover = {
-					stopScan()
+			// Validates the arguments
+			if (macAddress == null && service == null && name == null) throw IllegalArgumentException("You need to specify at least one filter!\nBeing them: macAddress, service and name")
 
-					runBlocking {
-						continuation.resume(connect(it))
+			GlobalScope.launch {
+
+				// Instantiate a new ScanCallback object
+				setupScanCallback(
+					onDiscover = { device ->
+						// HACK: On devices lower than Marshmallow, run the filtering manually!
+						if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.M) {
+							macAddress?.let {
+								if (device.address != it) return@setupScanCallback
+							}
+
+							service?.let {
+								val parcel = ParcelUuid(UUID.fromString(it))
+								if (device.uuids.any { x -> x == parcel }) return@setupScanCallback
+							}
+
+							name?.let {
+								if (device.name != it) return@setupScanCallback
+							}
+						}
+
+						GlobalScope.launch {
+							stopScan()
+							continuation.resume(connect(device))
+						}
+					},
+					onError = { errorCode ->
+						continuation.cancel(ScanFailureException(errorCode))
 					}
-				},
-				onError = { errorCode ->
-					continuation.cancel(ScanFailureException(errorCode))
+				)
+
+				// Clears the discovered device list
+				discoveredDeviceList = arrayListOf()
+
+				// Builds the filters
+				val filter = ScanFilter.Builder().run {
+					macAddress?.let { setDeviceAddress(it) }
+					service?.let { setServiceUuid(ParcelUuid(UUID.fromString(it))) }
+					name?.let { setDeviceName(it) }
+					build()
 				}
-			)
+				// HACK: Ignore the hardware filters on devices lower than MARSHMALLOW 23 (It doesn't work properly)
+				val filters = if (Build.VERSION.SDK_INT > Build.VERSION_CODES.M) arrayListOf(filter) else null
 
-			// Clears the discovered device list
-			discoveredDeviceList = arrayListOf()
+				// Starts the scan
+				isScanRunning = true
+				scanner?.startScan(
+					filters,
+					settings ?: defaultScanSettings,
+					scanCallbackInstance
+				)
 
-			// Builds the filters
-			val filter = ScanFilter.Builder()
-			macAddress?.let { filter.setDeviceAddress(it) }
-			service?.let { filter.setServiceUuid(ParcelUuid(UUID.fromString(it))) }
-			name?.let { filter.setDeviceName(it) }
-
-			// Starts the scan
-			isScanRunning = true
-			scanner?.startScan(
-				arrayListOf(filter.build()),
-				settings ?: defaultScanSettings,
-				scanCallbackInstance
-			)
-
-			// Only cancels when a timeout is defined
-			if (timeout > 0) {
-				runBlocking {
+				// Only cancels when a timeout is defined
+				if (timeout > 0) {
 					delay(timeout)
 
-					if (continuation.isActive && isScanRunning) continuation.cancel(ScanTimeoutException())
+					if (isScanRunning) {
+						log("Timeout! No device found in $timeout")
+						stopScan()
+						continuation.cancel(ScanTimeoutException())
+					}
 				}
 			}
 		}
@@ -430,12 +485,12 @@ class BluetoothMadeEasy {
 	fun stopScan() {
 		this.log("Stopping scan...")
 
+		isScanRunning = false
+
 		this.scanCallbackInstance?.let {
 			this.scanner?.stopScan(it)
 			this.scanCallbackInstance = null
 		}
-
-		isScanRunning = false
 	}
 	// endregion
 
