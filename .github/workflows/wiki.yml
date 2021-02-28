@@ -24,6 +24,8 @@ jobs:
         run: mv -f lib/build/dokka/gfm/lib ./docs
       - name: Git Commit changes
         run: |
+          git add README.md
+          git add docs
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git commit -m "Automatic commit" -a
