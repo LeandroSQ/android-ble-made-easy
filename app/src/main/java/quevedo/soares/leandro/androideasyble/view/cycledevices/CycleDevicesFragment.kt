@@ -33,7 +33,6 @@ class CycleDevicesFragment : Fragment() {
 
 	/* Navigation */
 	private val navController by lazy { findNavController() }
-	private val navArguments by navArgs<CycleDevicesFragmentArgs>()
 
 	/* Binding */
 	private lateinit var binding: FragmentSingleDeviceBinding
