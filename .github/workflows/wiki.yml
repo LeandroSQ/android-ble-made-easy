@@ -1,6 +1,4 @@
 on:
-  push:
-    branches: [master]
   workflow_dispatch:
 
 jobs:
@@ -21,9 +19,14 @@ jobs:
       - name: Generate Documention with Dokka
         run: ./gradlew lib:dokkaGfm
       - name: Moving generated documentation files
-        run: mv -f lib/build/dokka/gfm/lib ./docs
+        run: |
+          rm -rf ./docs
+          mv -f lib/build/dokka/gfm/lib ./docs
+          mv ./docs/index.md ./docs/Home.md
       - name: Git Commit changes
         run: |
+          git add README.md
+          git add docs
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git commit -m "Automatic commit" -a
@@ -33,14 +36,3 @@ jobs:
           github_token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
           branch: master
 
-  wiki:
-    needs: gradle
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v1
-      - name: Upload Documentation to Wiki
-        uses: SwiftDocOrg/github-wiki-publish-action@v1
-        with:
-          path: "docs"
-        env:
-          GH_PERSONAL_ACCESS_TOKEN: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
