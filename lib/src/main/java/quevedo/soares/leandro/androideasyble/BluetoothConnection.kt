@@ -18,12 +18,20 @@ import java.util.concurrent.atomic.AtomicInteger
 @Suppress("unused")
 class BluetoothConnection(private val device: BluetoothDevice) {
 
+	/* Bluetooth */
 	private var genericAttributeProfile: BluetoothGatt? = null
 	private var closingConnection: Boolean = false
 	private var connectionActive: Boolean = false
+
+	/* Callbacks */
 	private var connectionCallback: Callback<Boolean>? = null
+
+	/* Misc */
 	private var operationsInQueue: AtomicInteger = AtomicInteger(0)
 
+	/***
+	 * Indicates whether additional information should be logged
+	 ***/
 	var verbose: Boolean = false
 
 	/***
@@ -41,6 +49,13 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 	 ***/
 	val isActive get() = this.connectionActive
 
+	/***
+	 * Indicates the connection signal strength
+	 * <i>Measured in dBm</i>
+	 ***/
+	var rsii: Int = 0
+		private set
+
 	// region Utility related methods
 	private fun log(message: String) {
 		if (this.verbose) Log.d("BluetoothConnection", message)
@@ -56,21 +71,25 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 					log("Device ${device.address} connected!")
 
 					// Notifies that the connection has been established
-					connectionActive = true
-					onConnect?.invoke()
+					if (!connectionActive) {
+						onConnect?.invoke()
+						connectionActive = true
+					}
 
 					// Starts the services discovery
 					genericAttributeProfile?.discoverServices()
 				} else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-					// HACK: Workaround for Lollipop 21 and 22
-					if (closingConnection) {
+					if (status == 133) {// HACK: Multiple reconnections handler
+						log("Found 133 connection failure! Reconnecting GATT...")
+					} else if (closingConnection) {// HACK: Workaround for Lollipop 21 and 22
 						endDisconnection()
 					} else {
-						log("Lost connection with ${device.address}")
-
 						// Notifies that the connection has been lost
-						connectionActive = false
-						onDisconnect?.invoke()
+						if (connectionActive) {
+							log("Lost connection with ${device.address}")
+							onDisconnect?.invoke()
+							connectionActive = false
+						}
 					}
 				}
 			}
@@ -89,6 +108,12 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 				}
 			}
 
+			override fun onReadRemoteRssi(gatt: BluetoothGatt?, rssi: Int, status: Int) {
+				super.onReadRemoteRssi(gatt, rssi, status)
+
+				// Update the internal rsii variable
+				if (status == BluetoothGatt.GATT_SUCCESS) this@BluetoothConnection.rsii = rsii
+			}
 		}
 	}
 
@@ -135,6 +160,8 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 	 * @return True when successfully written the specified value
 	 ***/
 	fun write(characteristic: String, message: ByteArray): Boolean {
+		// TODO: Add reliable writing implementation
+		this.log("Writing to device ${device.address} (${message.size} bytes)")
 		this.beginOperation()
 
 		val characteristicUuid = UUID.fromString(characteristic)
@@ -145,6 +172,7 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 					if (characteristic.uuid == characteristicUuid) {
 						characteristic.value = message
 						return gatt.writeCharacteristic(characteristic).also {
+							if (!it) log("Could not write to device ${device.address}")
 							this.finishOperation()
 						}
 					}
@@ -234,6 +262,7 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 		try {
 			connectionActive = false
 			connectionCallback?.invoke(false)
+			onDisconnect?.invoke()
 			genericAttributeProfile?.close()
 			genericAttributeProfile = null
 			closingConnection = false
@@ -255,7 +284,9 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 			connectionCallback = null
 		}
 
-		this.genericAttributeProfile = device.connectGatt(context, false, setupGattCallback())
+		// HACK: Android M+ requires a transport LE in order to skip the 133 of death status when connecting
+		this.genericAttributeProfile = if (VERSION.SDK_INT > VERSION_CODES.M) device.connectGatt(context, true, setupGattCallback(), BluetoothDevice.TRANSPORT_LE)
+		else device.connectGatt(context, false, setupGattCallback())
 	}
 
 	/***

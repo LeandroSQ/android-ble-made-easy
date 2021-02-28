@@ -28,7 +28,7 @@ class ContractHandler <I, O>(contract: ActivityResultContract<I, O>, activity: A
 	}
 
 	fun launch(input: I, callback: Callback<O>) {
-		this.callback = callback;
+		this.callback = callback
 		this.activityResultLauncher?.launch(input)
 	}
 

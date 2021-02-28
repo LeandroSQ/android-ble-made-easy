@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:id="@+id/main_navigation_graph.xml"
+	app:startDestination="@id/multipleDevicesFragment">
+
+	<fragment
+		android:id="@+id/singleDeviceFragment"
+		android:name="quevedo.soares.leandro.androideasyble.view.singledevice.SingleDeviceFragment"
+		android:label="SingleDeviceFragment"
+		tools:layout="@layout/fragment_single_device">
+
+		<argument
+			android:name="deviceMacAddress"
+			app:argType="string" />
+
+		<argument
+			android:name="deviceCharacteristic"
+			app:argType="string" />
+
+	</fragment>
+
+	<fragment
+		android:id="@+id/cycleDevicesFragment"
+		android:name="quevedo.soares.leandro.androideasyble.view.cycledevices.CycleDevicesFragment"
+		android:label="CycleDevicesFragment"
+		tools:layout="@layout/fragment_cycle_devices"/>
+
+	<fragment
+		android:id="@+id/multipleDevicesFragment"
+		android:name="quevedo.soares.leandro.androideasyble.view.multipledevices.MultipleDevicesFragment"
+		android:label="MultipleDevicesFragment"
+		tools:layout="@layout/fragment_multiple_devices">
+
+		<action
+			android:id="@+id/action_multipleDevicesFragment_to_singleDeviceFragment"
+			app:destination="@id/singleDeviceFragment" />
+
+	</fragment>
+
+</navigation>

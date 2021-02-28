@@ -1,3 +1,4 @@
+
 # Android BLE Made Easy
 An easy to use, kotlin friendly BLE library for Android.
 
@@ -19,7 +20,7 @@ allprojects {
 dependencies {
     ...
 
-    implementation 'com.github.LeandroSQ:android-ble-made-easy:1.1.0'
+    implementation 'com.github.LeandroSQ:android-ble-made-easy:1.2.0'
 
     ...
 }
@@ -36,9 +37,9 @@ dependencies {
 The library accepts being used both in an Activity and a Fragment!
 
 ```kotlin
-val ble = BluetoothMadeEasy(activity = this)
+val ble = BLE(activity = this)
 // or
-val ble = BluetoothMadeEasy(fragment = this)
+val ble = BLE(fragment = this)
 ```
 
 ### Automatic handle permissions
@@ -108,6 +109,32 @@ GlobalScope.launch {
 }
 ```
 
+### Automatic turn on Location services
+
+The library requests Location services to be activated whenever it is off.
+
+Asynchronous:
+```kotlin
+ble.verifyLocationStateAsync{ active ->
+    if (active) {
+        // Continue your code...
+    } else {
+        // Include your code to show an Alert or UI indicating that Location is required to be on in order to your project work
+    }
+}
+```
+
+Coroutines:
+```kotlin
+GlobalScope.launch {
+    if (ble.verifyLocationState()) {
+        // Continue your code...
+    } else {
+        // Include your code to show an Alert or UI indicating that Location is required to be on in order to your project work
+    }
+}
+```
+
 ### Asynchronous and Coroutines
 
 You can both use the library with callbacks and with coroutines suspended functions
@@ -140,16 +167,40 @@ But also you can let it encode and decode your strings automatically.
 ### Automatically handles the pain of Known issues
 
 Take for instance [Issue 183108](https://code.google.com/p/android/issues/detail?id=183108) where Lollipop devices will not work properly without a workaround to handle the connection.
-The library does that for you!
+
+Or the well-known [BLE 133](https://github.com/android/connectivity-samples/issues/18) error! The nightmare of everyone that already worked with BLE on Android, this library has a compilation of tecniches being used to get around it
+
 
 ## Usage
 
-After instantiating the class `BluetoothMadeEasy`...
+After instantiating the `BLE` class...
 
 ### Fast scan for a specific device
 
 If you already know the device you wanna connect to, you could use this:
 
+Asynchronous:
+```kotlin
+ble.scanForAsync(
+	// You only need to supply one of these, no need for all of them!
+       macAddress = "00:00:00:00",
+       name = "ESP32",
+       service = "00000000-0000-0000-0000-000000000000",
+       onFinish = { connection ->
+		if (connection != null) {
+			// And you can continue with your code
+	        it.write("00000000-0000-0000-0000-000000000000", "Testing")
+		} else {
+			// Show an Alert or UI with your preferred error message about the device not being available
+		}
+	},
+       onError = { errorCode ->
+		 // Show an Alert or UI with your preferred error message about the error
+	}
+)
+
+// It is important to keep in mind that every single one of the provided arguments of the function shown above, are optionals! Therefore, you can skip the ones that you don't need.
+```
 Coroutines:
 ```kotlin
 GlobalScope.launch {
@@ -200,7 +251,6 @@ GlobalScope.launch {
     } catch (e: ScanFailureException) {
         // Show an Alert or UI with your preferred error message
     }
-
 }
 ```
 
@@ -223,7 +273,7 @@ ble.scanAsync(
 ble.stopScan()
 ```
 
-### Connecting to a discovered device
+### Manually connecting to a discovered device
 
 After a successful scan, you'll have your Bluetooth device, now it is time to connect with it!
 ```kotlin

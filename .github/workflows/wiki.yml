@@ -1,21 +1,27 @@
-on: 
+on:
   push:
     branches: [master]
   workflow_dispatch:
 
 jobs:
-  dokka:
+  gradle:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-java@v1
         with:
           java-version: 11
+      - name: Grant execute permisson for gradlew
+        run: chmod +x gradlew
+      - name: Update README.md version
+        run: ./gradlew lib:updateReadmeVersion
       - name: Generate Documention with Dokka
-        uses: eskatos/gradle-command-action@v1
-        with:
-          arguments: lib:dokkaGfm
-          
+        run: ./gradlew lib:dokkaGfm
+
+        # Just saving, there is still a need for automatically creating a Release tag before running this
+        #- name: Publish on JitPack
+        #run: ./gradlew lib:publish
+
   wiki:
     needs: dokka
     runs-on: ubuntu-latest

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools">
+
+	<data>
+
+		<import type="android.view.View" />
+
+		<variable
+			name="device"
+			type="quevedo.soares.leandro.androideasyble.models.BLEDevice" />
+
+	</data>
+
+	<androidx.constraintlayout.widget.ConstraintLayout
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:background="?attr/selectableItemBackground"
+		android:clickable="true"
+		android:descendantFocusability="blocksDescendants"
+		android:focusable="true"
+		android:padding="20dp">
+
+		<ImageView
+			android:id="@+id/ibd_iv_icon"
+			android:layout_width="wrap_content"
+			android:layout_height="0dp"
+			android:contentDescription="@string/item_bluetooth_device_icon_content_description"
+			android:src="@drawable/ic_bluetooth"
+			app:layout_constraintBottom_toBottomOf="parent"
+			app:layout_constraintStart_toStartOf="parent"
+			app:layout_constraintTop_toTopOf="parent"
+			app:tint="#2196F3" />
+
+		<TextView
+			android:id="@+id/ibd_tv_name"
+			android:layout_width="0dp"
+			android:layout_height="wrap_content"
+			android:layout_marginStart="20dp"
+			android:ellipsize="end"
+			android:maxLines="1"
+			android:textSize="16sp"
+			android:textStyle="bold"
+			android:text="@{device.name}"
+			app:layout_constraintEnd_toEndOf="parent"
+			app:layout_constraintStart_toEndOf="@id/ibd_iv_icon"
+			app:layout_constraintTop_toTopOf="@id/ibd_iv_icon"
+			tools:text="@tools:sample/full_names" />
+
+		<TextView
+			android:id="@+id/ibd_tv_address"
+			android:layout_width="0dp"
+			android:layout_height="wrap_content"
+			android:layout_marginStart="20dp"
+			android:text="@{device.macAddress}"
+			android:layout_marginEnd="20dp"
+			android:ellipsize="end"
+			android:layout_marginTop="5dp"
+			android:maxLines="1"
+			android:textSize="12sp"
+			app:layout_constraintEnd_toStartOf="@id/ibd_tv_signal_strength"
+			app:layout_constraintStart_toEndOf="@id/ibd_iv_icon"
+			app:layout_constraintTop_toBottomOf="@id/ibd_tv_name"
+			tools:text="@tools:sample/lorem" />
+
+		<TextView
+			android:id="@+id/ibd_tv_signal_strength"
+			android:layout_width="0dp"
+			android:layout_height="wrap_content"
+			android:layout_marginStart="20dp"
+			android:text="@{Integer.toString(device.rsii) + `dBm`}"
+			android:alpha="0.5"
+			android:ellipsize="end"
+			android:layout_marginTop="5dp"
+			android:maxLines="1"
+			android:textSize="10sp"
+			app:layout_constraintEnd_toEndOf="parent"
+			app:layout_constraintTop_toBottomOf="@id/ibd_tv_name"
+			tools:ignore="SmallSp"
+			tools:text="@tools:sample/us_phones" />
+
+	</androidx.constraintlayout.widget.ConstraintLayout>
+</layout>
