@@ -17,13 +17,8 @@ jobs:
         run: ./gradlew lib:updateReadmeVersion
       - name: Generate Documention with Dokka
         run: ./gradlew lib:dokkaGfm
-
-        # Just saving, there is still a need for automatically creating a Release tag before running this
-        #- name: Publish on JitPack
-        #run: ./gradlew lib:publish
-
   wiki:
-    needs: dokka
+    needs: gradle
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
