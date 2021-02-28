@@ -94,6 +94,8 @@ task updateReadmeVersion {
         def output = "implementation 'com.github.LeandroSQ:android-ble-made-easy:$version'"
 
         def file = new File("./README.md")
+        if (!file.exists()) file = new File("./../README.md")
+
         def fileContent = file.text
         file.withWriter { writer -> writer << fileContent.replaceAll(input, output) }
     }
