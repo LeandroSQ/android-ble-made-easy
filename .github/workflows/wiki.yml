@@ -21,7 +21,9 @@ jobs:
       - name: Generate Documention with Dokka
         run: ./gradlew lib:dokkaGfm
       - name: Moving generated documentation files
-        run: mv -f lib/build/dokka/gfm/lib ./docs
+        run: |
+          rm -rf ./docs
+          mv -f lib/build/dokka/gfm/lib ./docs
       - name: Git Commit changes
         run: |
           git add README.md
