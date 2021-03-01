@@ -2,10 +2,10 @@
 # Android BLE Made Easy
 An easy to use, kotlin friendly BLE library for Android.
 
-[![](https://jitpack.io/v/LeandroSQ/android-ble-made-easy.svg)](https://jitpack.io/#LeandroSQ/android-ble-made-easy)
+[![](https://jitpack.io/v/LeandroSQ/android-ble-made-easy.svg)](https://jitpack.io/#LeandroSQ/android-ble-made-easy) [![API](https://img.shields.io/badge/API-21%2B-blue.svg?style=flat)](https://android-arsenal.com/api?level=21)
 
 ## Installing
-- **Step 1.** Add the JitPackj repository to your **project gradle file**
+- **Step 1.** Add the JitPack repository to your **project gradle file**
 ```groovy
 allprojects {
     repositories {
@@ -168,7 +168,7 @@ But also you can let it encode and decode your strings automatically.
 
 Take for instance [Issue 183108](https://code.google.com/p/android/issues/detail?id=183108) where Lollipop devices will not work properly without a workaround to handle the connection.
 
-Or the well-known [BLE 133](https://github.com/android/connectivity-samples/issues/18) error! The nightmare of everyone that already worked with BLE on Android, this library has a compilation of tecniches being used to get around it
+Or the well-known [BLE 133](https://github.com/android/connectivity-samples/issues/18) error! The nightmare of everyone that already worked with BLE on Android, this library has a compilation of techniques being used to get around it
 
 
 ## Usage
