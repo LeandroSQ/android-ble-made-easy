@@ -182,21 +182,21 @@ If you already know the device you wanna connect to, you could use this:
 Asynchronous:
 ```kotlin
 ble.scanForAsync(
-	// You only need to supply one of these, no need for all of them!
-       macAddress = "00:00:00:00",
-       name = "ESP32",
-       service = "00000000-0000-0000-0000-000000000000",
-       onFinish = { connection ->
-		if (connection != null) {
-			// And you can continue with your code
-	        it.write("00000000-0000-0000-0000-000000000000", "Testing")
-		} else {
-			// Show an Alert or UI with your preferred error message about the device not being available
-		}
-	},
+    // You only need to supply one of these, no need for all of them!
+    macAddress = "00:00:00:00",
+    name = "ESP32",
+    service = "00000000-0000-0000-0000-000000000000",
+    onFinish = { connection ->
+        if (connection != null) {
+            // And you can continue with your code
+            it.write("00000000-0000-0000-0000-000000000000", "Testing")
+        } else {
+            // Show an Alert or UI with your preferred error message about the device not being available
+        }
+    },
        onError = { errorCode ->
-		 // Show an Alert or UI with your preferred error message about the error
-	}
+         // Show an Alert or UI with your preferred error message about the error
+    }
 )
 
 // It is important to keep in mind that every single one of the provided arguments of the function shown above, are optionals! Therefore, you can skip the ones that you don't need.
