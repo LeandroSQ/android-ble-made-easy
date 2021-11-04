@@ -1,4 +1,4 @@
-package quevedo.soares.leandro.androideasyble.view.multipledevices
+package quevedo.soares.leandro.androideasyble.view.scandevices
 
 import android.annotation.SuppressLint
 import android.os.Bundle
@@ -9,16 +9,19 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import quevedo.soares.leandro.androideasyble.BLE
 import quevedo.soares.leandro.androideasyble.R
 import quevedo.soares.leandro.androideasyble.adapter.BLEDeviceAdapter
-import quevedo.soares.leandro.androideasyble.databinding.FragmentMultipleDevicesBinding
+import quevedo.soares.leandro.androideasyble.databinding.FragmentScanDevicesBinding
 import quevedo.soares.leandro.androideasyble.models.BLEDevice
 
-class MultipleDevicesFragment : Fragment() {
+/**
+ * This is intended to discover nearby devices
+ **/
+class ScanDevicesFragment : Fragment() {
 
 	/* Constants */
 	private val deviceCharacteristic = "4ac8a682-9736-4e5d-932b-e9b31405049c"
@@ -28,7 +31,7 @@ class MultipleDevicesFragment : Fragment() {
 	private val navController by lazy { findNavController() }
 
 	/* Binding */
-	private lateinit var binding: FragmentMultipleDevicesBinding
+	private lateinit var binding: FragmentScanDevicesBinding
 
 	/* RecyclerView */
 	private lateinit var adapter: BLEDeviceAdapter
@@ -45,7 +48,7 @@ class MultipleDevicesFragment : Fragment() {
 	}
 
 	override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-		binding = DataBindingUtil.inflate(inflater, R.layout.fragment_multiple_devices, container, false)
+		binding = DataBindingUtil.inflate(inflater, R.layout.fragment_scan_devices, container, false)
 		binding.lifecycleOwner = viewLifecycleOwner
 		return binding.root
 	}
@@ -82,7 +85,7 @@ class MultipleDevicesFragment : Fragment() {
 	private fun requestPermissions() {
 		Log.d("MainActivity", "Setting bluetooth manager up...")
 
-		GlobalScope.launch {
+		lifecycleScope.launch {
 			// Checks the bluetooth permissions
 			val permissionsGranted = ble?.verifyPermissions(rationaleRequestCallback = { next ->
 				showToast("We need the bluetooth permissions!")
@@ -121,9 +124,9 @@ class MultipleDevicesFragment : Fragment() {
 	}
 
 	private fun startBluetoothScan() {
-		GlobalScope.launch {
+		lifecycleScope.launch {
 			ble?.scanAsync(
-				onUpdate = this@MultipleDevicesFragment::onScanDevicesUpdate,
+				onUpdate = this@ScanDevicesFragment::onScanDevicesUpdate,
 				onError = { code ->
 					showToast("Error code ${code}!")
 				},
@@ -150,7 +153,7 @@ class MultipleDevicesFragment : Fragment() {
 		this.ble?.stopScan()
 
 		// Navigates to the next fragment
-		this.navController.navigate(R.id.action_multipleDevicesFragment_to_singleDeviceFragment, Bundle().apply {
+		this.navController.navigate(R.id.action_scanDevicesFragment_to_singleDeviceFragment, Bundle().apply {
 			putString("deviceMacAddress", device.macAddress)
 			putString("deviceCharacteristic", deviceCharacteristic)
 		})

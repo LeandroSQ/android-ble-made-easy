@@ -29,30 +29,30 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 	/* Misc */
 	private var operationsInQueue: AtomicInteger = AtomicInteger(0)
 
-	/***
+	/**
 	 * Indicates whether additional information should be logged
-	 ***/
+	 **/
 	var verbose: Boolean = false
 
-	/***
+	/**
 	 * Called whenever a successful connection is established
-	 ***/
+	 **/
 	var onConnect: EmptyCallback? = null
 
-	/***
+	/**
 	 * Called whenever a connection is lost
-	 ***/
+	 **/
 	var onDisconnect: EmptyCallback? = null
 
-	/***
+	/**
 	 * Indicates whether the connection is active
-	 ***/
+	 **/
 	val isActive get() = this.connectionActive
 
-	/***
+	/**
 	 * Indicates the connection signal strength
 	 * <i>Measured in dBm</i>
-	 ***/
+	 **/
 	var rsii: Int = 0
 		private set
 
@@ -150,7 +150,7 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 	// endregion
 
 	// region Value writing related methods
-	/***
+	/**
 	 * Performs a write operation on a specific characteristic
 	 *
 	 * @see [write] For a variant that receives a [String] value
@@ -158,7 +158,7 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 	 * @param characteristic The uuid of the target characteristic
 	 *
 	 * @return True when successfully written the specified value
-	 ***/
+	 **/
 	fun write(characteristic: String, message: ByteArray): Boolean {
 		// TODO: Add reliable writing implementation
 		this.log("Writing to device ${device.address} (${message.size} bytes)")
@@ -185,7 +185,7 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 		return false
 	}
 
-	/***
+	/**
 	 * Performs a write operation on a specific characteristic
 	 *
 	 * @see [write] For a variant that receives a [ByteArray] value
@@ -193,12 +193,12 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 	 * @param characteristic The uuid of the target characteristic
 	 *
 	 * @return True when successfully written the specified value
-	 ***/
+	 **/
 	fun write(characteristic: String, message: String, charset: Charset = Charsets.UTF_8): Boolean = this.write(characteristic, message.toByteArray(charset))
 	// endregion
 
 	// region Value reading related methods
-	/***
+	/**
 	 * Performs a read operation on a specific characteristic
 	 *
 	 * @see [read] For a variant that returns a [String] value
@@ -206,7 +206,7 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 	 * @param characteristic The uuid of the target characteristic
 	 *
 	 * @return A nullable [ByteArray], null when failed to read
-	 ***/
+	 **/
 	fun read(characteristic: String): ByteArray? {
 		this.beginOperation()
 
@@ -232,7 +232,7 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 		return null
 	}
 
-	/***
+	/**
 	 * Performs a read operation on a specific characteristic
 	 *
 	 * @see [read] For a variant that returns a [ByteArray] value
@@ -240,7 +240,7 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 	 * @param characteristic The uuid of the target characteristic
 	 *
 	 * @return A nullable [String], null when failed to read
-	 ***/
+	 **/
 	fun read(characteristic: String, charset: Charset = Charsets.UTF_8): String? = this.read(characteristic)?.let { String(it, charset) }
 	// endregion
 
@@ -289,9 +289,9 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 		else device.connectGatt(context, false, setupGattCallback())
 	}
 
-	/***
+	/**
 	 * Closes the connection
-	 ***/
+	 **/
 	suspend fun close() {
 		// Wait for ongoing operations to finish before closing the connection
 		// Has a counter of 20 times 500ms each

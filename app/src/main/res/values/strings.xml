@@ -7,14 +7,12 @@
 	<string name="fragment_single_device_connect_btn">CONNECT</string>
 	<!-- </editor-fold> -->
 
-	<!-- <editor-fold defaultstate="Collapsed" desc="Fragment Multiple Device" -->
+	<!-- <editor-fold defaultstate="Collapsed" desc="Fragment Scan Devices" -->
 
 	<!-- </editor-fold> -->
 
 	<!-- <editor-fold defaultstate="Collapsed" desc="Item Bluetooth Device" -->
 	<string name="item_bluetooth_device_icon_content_description">Bluetooth icon</string>
-	<!-- TODO: Remove or change this placeholder text -->
-	<string name="hello_blank_fragment">Hello blank fragment</string>
 	<!-- </editor-fold> -->
 
 </resources>

@@ -1,5 +1,6 @@
 package quevedo.soares.leandro.androideasyble.adapter
 
+import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.databinding.DataBindingUtil
@@ -30,6 +31,7 @@ class BLEDeviceAdapter(private val recyclerView: RecyclerView, private val liste
 
 	override fun getItemCount(): Int = this.items.size
 
+	@SuppressLint("NotifyDataSetChanged")
 	fun setItems(newItems: List<BLEDevice>) {
 		this.items = newItems.sortedBy { it.name }
 		this.notifyDataSetChanged()

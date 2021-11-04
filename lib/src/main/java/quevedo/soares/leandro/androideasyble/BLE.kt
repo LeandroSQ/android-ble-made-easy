@@ -76,17 +76,17 @@ class BLE {
 		private set
 
 	/* Verbose related variables */
-	/***
+	/**
 	 * Indicates whether additional information should be logged
-	 ***/
+	 **/
 	var verbose = false
 
 	// region Constructors
-	/***
+	/**
 	 * Instantiates a new Bluetooth scanner instance
 	 *
 	 * @throws HardwareNotPresentException If no hardware is present on the running device
-	 ***/
+	 **/
 	constructor(activity: AppCompatActivity) {
 		this.log("Setting up on an Activity!")
 		this.activity = activity
@@ -94,11 +94,11 @@ class BLE {
 		this.setup()
 	}
 
-	/***
+	/**
 	 * Instantiates a new Bluetooth scanner instance
 	 *
 	 * @throws HardwareNotPresentException If no hardware is present on the running device
-	 ***/
+	 **/
 	constructor(fragment: Fragment) {
 		this.log("Setting up on a Fragment!")
 		this.fragment = fragment
@@ -158,7 +158,7 @@ class BLE {
 	// endregion
 
 	// region Permission related methods
-	/***
+	/**
 	 * Checks if the following permissions are granted: [permission.BLUETOOTH], [permission.BLUETOOTH_ADMIN] and [permission.ACCESS_FINE_LOCATION]
 	 *
 	 * If any of these isn't granted, automatically requests it to the user
@@ -167,7 +167,7 @@ class BLE {
 	 *
 	 * @param rationaleRequestCallback Called when rationale permission is required, should explain on the UI why the permissions are needed and then re-call this method
 	 * @param callback Called with a boolean parameter indicating the permission request state
-	 ***/
+	 **/
 	@RequiresPermission(allOf = [permission.BLUETOOTH, permission.BLUETOOTH_ADMIN, permission.ACCESS_FINE_LOCATION])
 	fun verifyPermissionsAsync(rationaleRequestCallback: Callback<EmptyCallback>? = null, callback: PermissionRequestCallback? = null) {
 		this.log("Checking App bluetooth permissions...")
@@ -191,7 +191,7 @@ class BLE {
 		}
 	}
 
-	/***
+	/**
 	 * Checks if the following permissions are granted: [permission.BLUETOOTH], [permission.BLUETOOTH_ADMIN] and [permission.ACCESS_FINE_LOCATION]
 	 *
 	 * If any of these isn't granted, automatically requests it to the user
@@ -200,7 +200,7 @@ class BLE {
 	 *
 	 * @param rationaleRequestCallback Called when rationale permission is required, should explain on the UI why the permissions are needed and then re-call this method
 	 * @return True when all the permissions are granted
-	 ***/
+	 **/
 	@RequiresPermission(allOf = [permission.BLUETOOTH, permission.BLUETOOTH_ADMIN, permission.ACCESS_FINE_LOCATION])
 	suspend fun verifyPermissions(rationaleRequestCallback: Callback<EmptyCallback>? = null): Boolean {
 		return suspendCancellableCoroutine { continuation ->
@@ -213,7 +213,7 @@ class BLE {
 	// endregion
 
 	// region Adapter enabling related methods
-	/***
+	/**
 	 * Checks if the bluetooth adapter is active
 	 *
 	 * If not, automatically requests it's activation to the user
@@ -221,7 +221,7 @@ class BLE {
 	 * @see verifyBluetoothAdapterState For a variation using coroutines suspended functions
 	 *
 	 * @param callback Called with a boolean parameter indicating the activation request state
-	 ***/
+	 **/
 	@RequiresPermission(permission.BLUETOOTH_ADMIN)
 	fun verifyBluetoothAdapterStateAsync(callback: PermissionRequestCallback? = null) {
 		this.log("Checking bluetooth adapter state...")
@@ -232,7 +232,7 @@ class BLE {
 		} else callback?.invoke(true)
 	}
 
-	/***
+	/**
 	 * Checks if the bluetooth adapter is active
 	 *
 	 * If not, automatically requests it's activation to the user
@@ -240,7 +240,7 @@ class BLE {
 	 * @see verifyBluetoothAdapterState For a variation using callbacks
 	 *
 	 * @return True when the bluetooth adapter is active
-	 ***/
+	 **/
 	@RequiresPermission(permission.BLUETOOTH_ADMIN)
 	suspend fun verifyBluetoothAdapterState(): Boolean {
 		return suspendCancellableCoroutine { continuation ->
@@ -253,7 +253,7 @@ class BLE {
 	// endregion
 
 	// region Location enabling related methods
-	/***
+	/**
 	 * Checks if location services are active
 	 *
 	 * If not, automatically requests it's activation to the user
@@ -261,7 +261,7 @@ class BLE {
 	 * @see verifyLocationState For a variation using coroutines suspended functions
 	 *
 	 * @param callback Called with a boolean parameter indicating the activation request state
-	 ***/
+	 **/
 	@RequiresPermission(anyOf = [permission.ACCESS_FINE_LOCATION, permission.ACCESS_COARSE_LOCATION])
 	fun verifyLocationStateAsync(callback: PermissionRequestCallback? = null) {
 		this.log("Checking location services state...")
@@ -300,7 +300,7 @@ class BLE {
 		}
 	}
 
-	/***
+	/**
 	 * Checks if location services are active
 	 *
 	 * If not, automatically requests it's activation to the user
@@ -308,7 +308,7 @@ class BLE {
 	 * @see verifyLocationStateAsync For a variation using callbacks
 	 *
 	 * @return True when the location services are active
-	 ***/
+	 **/
 	@RequiresPermission(anyOf = [permission.ACCESS_FINE_LOCATION, permission.ACCESS_COARSE_LOCATION])
 	suspend fun verifyLocationState(): Boolean {
 		return suspendCancellableCoroutine { continuation ->
@@ -378,7 +378,7 @@ class BLE {
 		}
 	}
 
-	/***
+	/**
 	 * Starts a scan for bluetooth devices
 	 * Can be used without [duration] running until [stopScan] is called.
 	 *
@@ -394,7 +394,7 @@ class BLE {
 	 * @param onFinish Called when the scan is finished with an Array of Bluetooth devices found
 	 * @param onDiscover Called whenever a new bluetooth device if found (Useful on realtime scans)
 	 * @param onError Called whenever an error occurs on the scan (Of which will be automatically halted in case of errors)
-	 ***/
+	 **/
 	@RequiresPermission(permission.BLUETOOTH_ADMIN)
 	suspend fun scanAsync(filters: List<ScanFilter>? = null, settings: ScanSettings? = null, duration: Long = DEFAULT_TIMEOUT, onFinish: Callback<Array<BLEDevice>>? = null, onDiscover: Callback<BLEDevice>? = null, onUpdate: Callback<List<BLEDevice>>? = null, onError: Callback<Int>? = null ) {
 		GlobalScope.launch {
@@ -435,7 +435,7 @@ class BLE {
 		}
 	}
 
-	/***
+	/**
 	 * Starts a scan for bluetooth devices
 	 * Only runs with a [duration] defined
 	 *
@@ -451,7 +451,7 @@ class BLE {
 	 * @throws ScanFailureException When an error occurs
 	 *
 	 * @return An Array of Bluetooth devices found
-	 ***/
+	 **/
 	@RequiresPermission(permission.BLUETOOTH_ADMIN)
 	suspend fun scan(filters: List<ScanFilter>? = null, settings: ScanSettings? = null, duration: Long = DEFAULT_TIMEOUT): Array<BLEDevice> {
 		return suspendCancellableCoroutine { continuation ->
@@ -474,7 +474,7 @@ class BLE {
 		}
 	}
 
-	/***
+	/**
 	 * Scans for a single bluetooth device and automatically connects with it
 	 * Requires at least one filter being them: [macAddress], [service] and [name]
 	 *
@@ -492,7 +492,7 @@ class BLE {
 	 * @throws ScanFailureException When an error occurs
 	 *
 	 * @return A nullable [BluetoothConnection] instance, when null meaning that the specified device was not found
-	 ***/
+	 **/
 	suspend fun scanForAsync(macAddress: String? = null, service: String? = null, name: String? = null, settings: ScanSettings? = null, timeout: Long = DEFAULT_TIMEOUT, onFinish: Callback<BluetoothConnection?>? = null, onError: Callback<Int>? = null) {
 		GlobalScope.launch {
 			try {
@@ -507,7 +507,7 @@ class BLE {
 		}
 	}
 
-	/***
+	/**
 	 * Scans for a single bluetooth device and automatically connects with it
 	 * Requires at least one filter being them: [macAddress], [service] and [name]
 	 *
@@ -525,7 +525,7 @@ class BLE {
 	 * @throws ScanFailureException When an error occurs
 	 *
 	 * @return A nullable [BluetoothConnection] instance, when null meaning that the specified device was not found
-	 ***/
+	 **/
 	suspend fun scanFor(macAddress: String? = null, service: String? = null, name: String? = null, settings: ScanSettings? = null, timeout: Long = DEFAULT_TIMEOUT): BluetoothConnection? {
 		return suspendCancellableCoroutine { continuation ->
 			// Validates the arguments
@@ -619,9 +619,9 @@ class BLE {
 		}
 	}
 
-	/***
+	/**
 	 * Stops the scan started by [scan]
-	 ***/
+	 **/
 	fun stopScan() {
 		this.log("Stopping scan...")
 
@@ -643,13 +643,13 @@ class BLE {
 	// endregion
 
 	// region Connection related methods
-	/***
+	/**
 	 * Establishes a connection with the specified bluetooth device
 	 *
 	 * @param device The device to be connected with
 	 *
 	 * @return A nullable [BluetoothConnection], null when not successful
-	 ***/
+	 **/
 	suspend fun connect(device: BluetoothDevice): BluetoothConnection? {
 		return suspendCancellableCoroutine { continuation ->
 			this.log("Trying to establish a conecttion with device ${device.address}...")
@@ -669,13 +669,13 @@ class BLE {
 		}
 	}
 
-	/***
+	/**
 	 * Establishes a connection with the specified bluetooth device
 	 *
 	 * @param device The device to be connected with
 	 *
 	 * @return A nullable [BluetoothConnection], null when not successful
-	 ***/
+	 **/
 	suspend fun connect(device: BLEDevice): BluetoothConnection? = this.connect(device.device)
 	// endregion
 

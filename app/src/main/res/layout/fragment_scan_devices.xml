@@ -7,7 +7,6 @@
 
 		<import type="android.view.View" />
 
-
 	</data>
 
 	<androidx.constraintlayout.widget.ConstraintLayout

@@ -29,12 +29,12 @@
 
 	<fragment
 		android:id="@+id/multipleDevicesFragment"
-		android:name="quevedo.soares.leandro.androideasyble.view.multipledevices.MultipleDevicesFragment"
+		android:name="quevedo.soares.leandro.androideasyble.view.scandevices.ScanDevicesFragment"
 		android:label="MultipleDevicesFragment"
-		tools:layout="@layout/fragment_multiple_devices">
+		tools:layout="@layout/fragment_scan_devices">
 
 		<action
-			android:id="@+id/action_multipleDevicesFragment_to_singleDeviceFragment"
+			android:id="@+id/action_scanDevicesFragment_to_singleDeviceFragment"
 			app:destination="@id/singleDeviceFragment" />
 
 	</fragment>

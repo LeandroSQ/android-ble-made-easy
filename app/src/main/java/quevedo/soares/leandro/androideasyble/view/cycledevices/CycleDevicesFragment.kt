@@ -10,8 +10,8 @@ import android.widget.Toast
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
-import androidx.navigation.fragment.navArgs
 import kotlinx.coroutines.*
 import quevedo.soares.leandro.androideasyble.BLE
 import quevedo.soares.leandro.androideasyble.BluetoothConnection
@@ -19,6 +19,9 @@ import quevedo.soares.leandro.androideasyble.R
 import quevedo.soares.leandro.androideasyble.databinding.FragmentSingleDeviceBinding
 import quevedo.soares.leandro.androideasyble.exceptions.ScanTimeoutException
 
+/**
+ * This is intended for testing the library and for testing purposes only
+ **/
 class CycleDevicesFragment : Fragment() {
 
 	// DEFAULT    -> 7C:9E:BD:F4:18:76
@@ -78,7 +81,7 @@ class CycleDevicesFragment : Fragment() {
 	override fun onDestroy() {
 		super.onDestroy()
 
-		GlobalScope.launch {
+		lifecycleScope.launch {
 			// Closes the connection with the device
 			connection?.close()
 			connection = null
@@ -104,7 +107,7 @@ class CycleDevicesFragment : Fragment() {
 	private fun requestPermissions() {
 		Log.d("MainActivity", "Setting bluetooth manager up...")
 
-		GlobalScope.launch {
+		lifecycleScope.launch {
 			// Checks the bluetooth permissions
 			val permissionsGranted = ble?.verifyPermissions(rationaleRequestCallback = { next ->
 				showToast("We need the bluetooth permissions!")
@@ -159,7 +162,7 @@ class CycleDevicesFragment : Fragment() {
 	}
 
 	private fun startChronometer() {
-		GlobalScope.launch {
+		lifecycleScope.launch {
 			scanStartTime = System.currentTimeMillis()
 			while (isActive) {
 				val start = System.currentTimeMillis()
@@ -180,7 +183,7 @@ class CycleDevicesFragment : Fragment() {
 
 	// region Event listeners
 	private fun onButtonToggleClick(v: View) {
-		GlobalScope.launch {
+		lifecycleScope.launch {
 			// Update variables
 			updateStatus(true, "Sending data...")
 
@@ -205,7 +208,7 @@ class CycleDevicesFragment : Fragment() {
 	}
 
 	private fun onButtonConnectClick(v: View) {
-		GlobalScope.launch {
+		lifecycleScope.launch {
 			try {
 				if (scanStartTime == 0L) startChronometer()
 
@@ -255,7 +258,7 @@ class CycleDevicesFragment : Fragment() {
 	}
 
 	private fun onButtonDisconnectClick(v: View) {
-		GlobalScope.launch {
+		lifecycleScope.launch {
 			// Update variables
 			updateStatus(true, "Disconnecting...")
 

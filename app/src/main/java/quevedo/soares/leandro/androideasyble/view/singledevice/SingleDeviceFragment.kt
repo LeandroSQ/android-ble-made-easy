@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import kotlinx.coroutines.*
@@ -19,6 +20,9 @@ import quevedo.soares.leandro.androideasyble.R
 import quevedo.soares.leandro.androideasyble.databinding.FragmentSingleDeviceBinding
 import quevedo.soares.leandro.androideasyble.exceptions.ScanTimeoutException
 
+/**
+ * This is intended to control a single device
+ **/
 class SingleDeviceFragment : Fragment() {
 
 	/* Constants */
@@ -70,7 +74,7 @@ class SingleDeviceFragment : Fragment() {
 	override fun onDestroy() {
 		super.onDestroy()
 
-		GlobalScope.launch {
+		lifecycleScope.launch {
 			// Closes the connection with the device
 			connection?.close()
 			connection = null
@@ -93,36 +97,32 @@ class SingleDeviceFragment : Fragment() {
 	}
 
 	@SuppressLint("MissingPermission")
-	private fun requestPermissions() {
+	private fun requestPermissions() = lifecycleScope.launch {
 		Log.d("MainActivity", "Setting bluetooth manager up...")
 
-		GlobalScope.launch {
-			// Checks the bluetooth permissions
-			val permissionsGranted = ble?.verifyPermissions(rationaleRequestCallback = { next ->
-				showToast("We need the bluetooth permissions!")
-				next()
-			})
+		// Checks the bluetooth permissions
+		val permissionsGranted = ble?.verifyPermissions(rationaleRequestCallback = { next ->
+			showToast("We need the bluetooth permissions!")
+			next()
+		})
+		if (permissionsGranted == false) {
 			// Shows UI feedback if the permissions were denied
-			if (permissionsGranted == false) {
-				showToast("Permissions denied!")
-				return@launch
-			}
+			showToast("Permissions denied!")
+			return@launch
+		}
 
-			// Checks the bluetooth adapter state
-			val bluetoothActive = ble?.verifyBluetoothAdapterState()
+		// Checks the bluetooth adapter state
+		if (ble?.verifyBluetoothAdapterState() == false) {
 			// Shows UI feedback if the adapter is turned off
-			if (bluetoothActive == false) {
-				showToast("Bluetooth adapter off!")
-				return@launch
-			}
+			showToast("Bluetooth adapter off!")
+			return@launch
+		}
 
-			// Checks the location services state
-			val locationActive = ble?.verifyLocationState()
+		// Checks the location services state
+		if (ble?.verifyLocationState() == false) {
 			// Shows UI feedback if location services are turned off
-			if (locationActive == false) {
-				showToast("Location services off!")
-				return@launch
-			}
+			showToast("Location services off!")
+			return@launch
 		}
 	}
 
@@ -152,7 +152,7 @@ class SingleDeviceFragment : Fragment() {
 
 	// region Event listeners
 	private fun onButtonToggleClick(v: View) {
-		GlobalScope.launch {
+		lifecycleScope.launch {
 			// Update variables
 			updateStatus(true, "Sending data...")
 
@@ -174,31 +174,14 @@ class SingleDeviceFragment : Fragment() {
 	}
 
 	private fun onButtonConnectClick(v: View) {
-		GlobalScope.launch {
+		lifecycleScope.launch {
 			try {
 				// Update variables
 				updateStatus(true, "Connecting...")
 
 				// Tries to connect with the provided mac address
 				ble?.scanFor(macAddress = deviceMacAddress, timeout = 20000)?.let {
-					// Set the connection listeners
-					connection = it.apply {
-						onConnect = {
-							// Update variables
-							isDeviceConnected.postValue(true)
-							updateStatus(false, "Conected!")
-						}
-
-						onDisconnect = {
-							// Update variables
-							isDeviceConnected.postValue(false)
-							updateStatus(false, "Disconnected!")
-						}
-					}
-
-					// Update variables
-					isDeviceConnected.postValue(true)
-					updateStatus(false, "Conected!")
+					onDeviceConnected(it)
 				}
 			} catch (e: ScanTimeoutException) {
 				// Update variables
@@ -211,7 +194,7 @@ class SingleDeviceFragment : Fragment() {
 	}
 
 	private fun onButtonDisconnectClick(v: View) {
-		GlobalScope.launch {
+		lifecycleScope.launch {
 			// Update variables
 			updateStatus(true, "Disconnecting...")
 
@@ -221,6 +204,30 @@ class SingleDeviceFragment : Fragment() {
 
 			// Update variables
 			updateStatus(false, "Disconnected!")
+		}
+	}
+
+	private fun onDeviceConnected(connection: BluetoothConnection) {
+		connection.apply {
+			this@SingleDeviceFragment.connection = connection
+
+			// Define the on re-connect handler
+			onConnect = {
+				// Update variables
+				isDeviceConnected.postValue(true)
+				updateStatus(false, "Conected!")
+			}
+
+			// Define the on disconnect handler
+			onDisconnect = {
+				// Update variables
+				isDeviceConnected.postValue(false)
+				updateStatus(false, "Disconnected!")
+			}
+
+			// Update variables
+			isDeviceConnected.postValue(true)
+			updateStatus(false, "Conected!")
 		}
 	}
 	// endregion
