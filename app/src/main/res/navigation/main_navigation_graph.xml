@@ -7,7 +7,7 @@
 
 	<fragment
 		android:id="@+id/singleDeviceFragment"
-		android:name="quevedo.soares.leandro.androideasyble.view.singledevice.SingleDeviceFragment"
+		android:name="quevedo.soares.leandro.blemadeeasy.view.singledevice.SingleDeviceFragment"
 		android:label="SingleDeviceFragment"
 		tools:layout="@layout/fragment_single_device">
 
@@ -23,13 +23,13 @@
 
 	<fragment
 		android:id="@+id/cycleDevicesFragment"
-		android:name="quevedo.soares.leandro.androideasyble.view.cycledevices.CycleDevicesFragment"
+		android:name="quevedo.soares.leandro.blemadeeasy.view.cycledevices.CycleDevicesFragment"
 		android:label="CycleDevicesFragment"
 		tools:layout="@layout/fragment_cycle_devices"/>
 
 	<fragment
 		android:id="@+id/multipleDevicesFragment"
-		android:name="quevedo.soares.leandro.androideasyble.view.scandevices.ScanDevicesFragment"
+		android:name="quevedo.soares.leandro.blemadeeasy.view.scandevices.ScanDevicesFragment"
 		android:label="MultipleDevicesFragment"
 		tools:layout="@layout/fragment_scan_devices">
 

@@ -1,5 +1,5 @@
 <resources>
-	<string name="app_name">AndroidEasyBLE</string>
+	<string name="app_name">BLE Made Easy</string>
 
 	<!-- <editor-fold defaultstate="Collapsed" desc="Fragment Single Device" -->
 	<string name="fragment_single_device_toggle_btn">TOGGLE</string>

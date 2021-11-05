@@ -8,8 +8,11 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
-        <entry key="app/src/main/res/layout/activity_main.xml" value="0.2078125" />
-        <entry key="app/src/main/res/layout/fragment_scan_devices.xml" value="0.335" />
+        <entry key="app/src/main/res/layout/activity_main.xml" value="0.2109375" />
+        <entry key="app/src/main/res/layout/fragment_cycle_devices.xml" value="0.2109375" />
+        <entry key="app/src/main/res/layout/fragment_scan_devices.xml" value="0.2109375" />
+        <entry key="app/src/main/res/layout/fragment_single_device.xml" value="0.2109375" />
+        <entry key="app/src/main/res/layout/item_bluetooth_device.xml" value="0.2109375" />
       </map>
     </option>
   </component>
