@@ -348,20 +348,15 @@ class BLE {
 		fun onDeviceFound(device: BluetoothDevice, rssi: Int, advertisingId: Int = -1) {
 			log("Scan result! ${device.name} (${device.address}) ${rssi}dBm")
 
-			// Iterates trough every device already discovered
-			var deviceAlreadyInserted = false
-			for (i in 0 until discoveredDeviceList.size) {
-				val d = discoveredDeviceList[i]
+			discoveredDeviceList.find { it.macAddress == device.address }?.let {
+				log("Device update from ${it.rsii} to $rssi at ${device.name}")
 
 				// If the device was already inserted on the list, update it's rsii value
-				if (d.device.address == device.address) {
-					onUpdate?.invoke(discoveredDeviceList.toList())
-					deviceAlreadyInserted = true
-				}
-			}
-
-			// If the device was not inserted before, add to the discovered device list
-			if (!deviceAlreadyInserted) {
+				it.device = device
+				if (it.rsii != rssi && rssi != 0) it.rsii = rssi
+				onUpdate?.invoke(discoveredDeviceList.toList())
+			} ?: run {
+				// If the device was not inserted before, add to the discovered device list
 				val bleDevice = BLEDevice(device, rssi, advertisingId)
 				discoveredDeviceList.add(bleDevice)
 				onDiscover?.invoke(bleDevice)
@@ -373,7 +368,7 @@ class BLE {
 			scanReceiverInstance = object: BroadcastReceiver() {
 				override fun onReceive(context: Context?, intent: Intent?) {
 					// Ignore other events
-					if (BluetoothDevice.ACTION_FOUND != intent?.action) return
+					if (intent == null) return
 
 					// Fetch information from the intent extras
 					val device = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE) ?: return
@@ -385,7 +380,18 @@ class BLE {
 					onDeviceFound(device, rssi, -1)
 				}
 			}
-			context.registerReceiver(scanReceiverInstance, IntentFilter(BluetoothDevice.ACTION_FOUND))
+			context.registerReceiver(scanReceiverInstance, IntentFilter().apply {
+				addAction(BluetoothDevice.ACTION_FOUND)
+				addAction(BluetoothDevice.ACTION_UUID)
+				addAction(BluetoothDevice.ACTION_NAME_CHANGED)
+				addAction(BluetoothDevice.ACTION_CLASS_CHANGED)
+				addAction(BluetoothDevice.ACTION_ACL_CONNECTED)
+				addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
+				addAction(BluetoothDevice.ACTION_ACL_DISCONNECT_REQUESTED)
+				addAction(BluetoothDevice.ACTION_ALIAS_CHANGED)
+				addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
+				addAction(BluetoothDevice.ACTION_PAIRING_REQUEST)
+			})
 			// endregion
 		} else {
 			// region Legacy callback
@@ -434,7 +440,7 @@ class BLE {
 	 * @param onError Called whenever an error occurs on the scan (Of which will be automatically halted in case of errors)
 	 **/
 	@SuppressLint("InlinedApi")
-	@RequiresPermission(allOf = [permission.BLUETOOTH_ADMIN, permission.BLUETOOTH_SCAN])
+	@RequiresPermission(anyOf = [permission.BLUETOOTH_ADMIN, permission.BLUETOOTH_SCAN])
 	suspend fun scanAsync(filters: List<ScanFilter>? = null, settings: ScanSettings? = null, duration: Long = DEFAULT_TIMEOUT, onFinish: Callback<Array<BLEDevice>>? = null, onDiscover: Callback<BLEDevice>? = null, onUpdate: Callback<List<BLEDevice>>? = null, onError: Callback<Int>? = null ) {
 		this.coroutineScope.launch {
 			log("Starting scan...")
@@ -501,7 +507,7 @@ class BLE {
 	 * @return An Array of Bluetooth devices found
 	 **/
 	@SuppressLint("InlinedApi")
-	@RequiresPermission(allOf = [permission.BLUETOOTH_ADMIN, permission.BLUETOOTH_SCAN])
+	@RequiresPermission(anyOf = [permission.BLUETOOTH_ADMIN, permission.BLUETOOTH_SCAN])
 	suspend fun scan(filters: List<ScanFilter>? = null, settings: ScanSettings? = null, duration: Long = DEFAULT_TIMEOUT): Array<BLEDevice> {
 		return suspendCancellableCoroutine { continuation ->
 			this.coroutineScope.launch {
@@ -543,7 +549,7 @@ class BLE {
 	 * @return A nullable [BluetoothConnection] instance, when null meaning that the specified device was not found
 	 **/
 	@SuppressLint("InlinedApi")
-	@RequiresPermission(allOf = [permission.BLUETOOTH_ADMIN, permission.BLUETOOTH_SCAN, permission.BLUETOOTH_CONNECT])
+	@RequiresPermission(anyOf = [permission.BLUETOOTH_ADMIN, permission.BLUETOOTH_SCAN, permission.BLUETOOTH_CONNECT])
 	suspend fun scanForAsync(macAddress: String? = null, service: String? = null, name: String? = null, settings: ScanSettings? = null, timeout: Long = DEFAULT_TIMEOUT, onFinish: Callback<BluetoothConnection?>? = null, onError: Callback<Int>? = null) {
 		this.coroutineScope.launch {
 			try {
@@ -723,15 +729,17 @@ class BLE {
 			this.log("Trying to establish a conecttion with device ${device.address}...")
 
 			// Establishes a bluetooth connection to the specified device
-			val connection = BluetoothConnection(device)
-			connection.verbose = this.verbose
-			connection.establish(this.context) { successful ->
-				if (successful) {
-					log("Connected successfully with ${device.address}!")
-					continuation.resume(connection)
-				} else {
-					log("Could not connect with ${device.address}")
-					continuation.resume(null)
+			BluetoothConnection(device).also {
+				it.verbose = this.verbose
+				it.coroutineScope = this.coroutineScope
+				it.establish(this.context) { successful ->
+					if (successful) {
+						log("Connected successfully with ${device.address}!")
+						continuation.resume(it)
+					} else {
+						log("Could not connect with ${device.address}")
+						continuation.resume(null)
+					}
 				}
 			}
 		}

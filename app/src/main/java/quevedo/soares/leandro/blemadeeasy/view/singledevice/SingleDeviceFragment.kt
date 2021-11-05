@@ -198,6 +198,7 @@ class SingleDeviceFragment : Fragment() {
 
 			// Update variables
 			updateStatus(false, "Disconnected!")
+			setDeviceConnectionStatus(false)
 		}
 	}
 
@@ -209,7 +210,7 @@ class SingleDeviceFragment : Fragment() {
 			onConnect = {
 				// Update variables
 				setDeviceConnectionStatus(true)
-				updateStatus(false, "Conected!")
+				updateStatus(false, "Connected!")
 			}
 
 			// Define the on disconnect handler
@@ -221,7 +222,7 @@ class SingleDeviceFragment : Fragment() {
 
 			// Update variables
 			setDeviceConnectionStatus(true)
-			updateStatus(false, "Conected!")
+			updateStatus(false, "Connected!")
 		}
 	}
 	// endregion

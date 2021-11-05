@@ -149,14 +149,17 @@ class ScanDevicesFragment : Fragment() {
 
 		// Only updates the recycler view if the amount of items has changed
 		// Or if the minimum update threshold has been elapsed
-		if (this.adapter.itemCount != list.size || System.currentTimeMillis() - lastUpdateTime >= minimumUpdateInterval)  {
-			binding.fmdPbLoader.isVisible = list.isEmpty()
+		binding.fmdPbLoader.isVisible = list.isEmpty()
 
-			// Set the recycler view items
-			this.adapter.setItems(list)
-			// Store the current time as the last update
-			this.lastUpdateTime = System.currentTimeMillis()
-		}
+		// Set the recycler view items
+		this.adapter.submitList(list)
+		this.adapter.notifyDataSetChanged()
+
+		// Store the current time as the last update
+		this.lastUpdateTime = System.currentTimeMillis()
+		/*if (this.adapter.itemCount != list.size || System.currentTimeMillis() - lastUpdateTime >= minimumUpdateInterval)  {
+
+		}*/
 	}
 
 	private fun onItemSelected(position: Int, device: BLEDevice) {

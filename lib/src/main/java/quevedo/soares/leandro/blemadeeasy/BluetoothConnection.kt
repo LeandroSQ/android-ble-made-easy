@@ -6,7 +6,9 @@ import android.content.Context
 import android.os.Build.VERSION
 import android.os.Build.VERSION_CODES
 import android.util.Log
-import kotlinx.coroutines.GlobalScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import quevedo.soares.leandro.blemadeeasy.exceptions.ConnectionClosingException
@@ -16,8 +18,10 @@ import java.nio.charset.Charset
 import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 
+typealias OnCharacteristicValueChangeCallback<T> = (old: T, new: T) -> Unit
+
 @Suppress("unused")
-class BluetoothConnection(private val device: BluetoothDevice) {
+class BluetoothConnection internal constructor(private val device: BluetoothDevice) {
 
 	/* Bluetooth */
 	private var genericAttributeProfile: BluetoothGatt? = null
@@ -29,6 +33,8 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 
 	/* Misc */
 	private var operationsInQueue: AtomicInteger = AtomicInteger(0)
+
+	internal var coroutineScope: CoroutineScope? = null
 
 	/**
 	 * Indicates whether additional information should be logged
@@ -60,6 +66,14 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 	// region Utility related methods
 	private fun log(message: String) {
 		if (this.verbose) Log.d("BluetoothConnection", message)
+	}
+
+	private fun warn(message: String) {
+		Log.w("BluetoothConnection", message)
+	}
+
+	private fun error(message: String) {
+		Log.e("BluetoothConnection", message)
 	}
 
 	private fun setupGattCallback(): BluetoothGattCallback {
@@ -98,11 +112,11 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 			override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
 				super.onServicesDiscovered(gatt, status)
 
-				GlobalScope.launch {
+				coroutineScope?.launch {
 					if (status == BluetoothGatt.GATT_SUCCESS) {
 						connectionCallback?.invoke(true)
 					} else {
-						Log.e("BluetoothConnection", "Error while discovering services at ${device.address}! Status: $status")
+						error("Error while discovering services at ${device.address}! Status: $status")
 						close()
 						connectionCallback?.invoke(false)
 					}
@@ -181,7 +195,7 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 			}
 		}
 
-		Log.e("BluetoothConnection", "Characteristic $characteristic not found on device ${device.address}!")
+		error("Characteristic $characteristic not found on device ${device.address}!")
 		this.finishOperation()
 		return false
 	}
@@ -222,10 +236,10 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 						this.finishOperation()
 					}
 				} else {
-					Log.e("BluetoothConnection", "Failed to read characteristic $characteristic on device ${device.address}")
+					error("Failed to read characteristic $characteristic on device ${device.address}")
 				}
 			} else {
-				Log.e("BluetoothConnection", "Characteristic $characteristic not found on device ${device.address}!")
+				error("Characteristic $characteristic not found on device ${device.address}!")
 			}
 		}
 
@@ -243,6 +257,38 @@ class BluetoothConnection(private val device: BluetoothDevice) {
 	 * @return A nullable [String], null when failed to read
 	 **/
 	fun read(characteristic: String, charset: Charset = Charsets.UTF_8): String? = this.read(characteristic)?.let { String(it, charset) }
+	// endregion
+	
+	// region Polling
+	fun observe(owner: LifecycleOwner, characteristic: String, interval: Long = 1000L, callback: OnCharacteristicValueChangeCallback<ByteArray?>) {
+		this.coroutineScope?.launch {
+			var startValue: ByteArray? = null
+			while (owner.lifecycle.currentState != Lifecycle.State.DESTROYED) {
+				// Saves the start time
+				val startTime = System.currentTimeMillis()
+
+				// Fetch the characteristic current value
+				val currentValue = read(characteristic)
+				// Check if it has changed since last interval
+				if (!currentValue.contentEquals(startValue)) {
+					// It has changed, update its value and invoke the callback
+					callback.invoke(startValue, currentValue)
+					startValue = currentValue
+				}
+
+				// Saves the end time
+				val endTime = System.currentTimeMillis()
+				// Calculate the elapsed time and subtract it from the interval time
+				val elapsedTime = endTime - startTime
+				val sleepTime = (interval - elapsedTime).coerceAtLeast(0L)
+
+				// Updates too close can be harmful to the battery, warn the user
+				if (sleepTime <= 0L) warn("The elapsed time ${elapsedTime} between reads exceeds the specified interval of ${interval}ms. You should consider increasing the interval!")
+
+				delay(sleepTime)
+			}
+		}
+	}
 	// endregion
 
 	// region Workaround for lollipop
