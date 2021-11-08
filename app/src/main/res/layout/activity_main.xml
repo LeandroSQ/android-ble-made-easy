@@ -1,11 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.fragment.app.FragmentContainerView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
 	xmlns:tools="http://schemas.android.com/tools"
-	android:id="@+id/am_fcv_host"
-	android:name="androidx.navigation.fragment.NavHostFragment"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
-	app:defaultNavHost="true"
-	app:navGraph="@navigation/main_navigation_graph"
-	tools:context=".view.MainActivity" />
+	tools:context=".view.MainActivity">
+
+	<com.google.android.material.appbar.AppBarLayout
+		android:id="@+id/am_apb_toolbar_layout"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toTopOf="parent">
+
+		<com.google.android.material.appbar.MaterialToolbar
+			android:id="@+id/am_mt_toolbar"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:background="?colorPrimary"
+			android:theme="@style/Theme.BLEMadeEasy.Toolbar"
+			app:title="@string/app_name"
+			app:titleTextAppearance="@style/Theme.BLEMadeEasy.Toolbar"
+			app:titleTextColor="@color/white">
+
+		</com.google.android.material.appbar.MaterialToolbar>
+
+	</com.google.android.material.appbar.AppBarLayout>
+
+	<androidx.fragment.app.FragmentContainerView
+		android:id="@+id/am_fcv_host"
+		android:name="androidx.navigation.fragment.NavHostFragment"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		app:defaultNavHost="true"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/am_apb_toolbar_layout"
+		app:navGraph="@navigation/main_navigation_graph"
+		tools:context=".view.MainActivity" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,13 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="quevedo.soares.leandro.androideasyble">
+	xmlns:tools="http://schemas.android.com/tools"
+	package="quevedo.soares.leandro.blemadeeasy">
 
-	<uses-permission android:name="android.permission.BLUETOOTH"/>
-	<uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
+	<!-- Legacy permissions -->
+	<uses-permission
+		android:name="android.permission.BLUETOOTH"
+		android:maxSdkVersion="30" />
+	<uses-permission
+		android:name="android.permission.BLUETOOTH_ADMIN"
+		android:maxSdkVersion="30" />
 
+	<!-- Android 12 -->
+	<uses-permission android:name="android.permission.BLUETOOTH_CONNECT"
+		tools:targetApi="s" />
+	<uses-permission
+		android:name="android.permission.BLUETOOTH_SCAN"
+		android:usesPermissionFlags="neverForLocation"
+		tools:targetApi="s" />
+
+	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+	<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
-	<uses-feature android:name="android.hardware.bluetooth_le" android:required="true"/>
-	<uses-feature android:name="android.hardware.bluetooth" android:required="true"/>
+	<uses-feature
+		android:name="android.hardware.bluetooth_le"
+		android:required="true" />
+	<uses-feature
+		android:name="android.hardware.bluetooth"
+		android:required="true" />
+
 
 </manifest>
