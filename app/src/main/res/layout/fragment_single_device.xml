@@ -19,7 +19,7 @@
 		app:layout_constraintTop_toTopOf="parent"
 		tools:text="Current status: Connecting..." />
 
-	<Button
+	<com.google.android.material.button.MaterialButton
 		android:id="@+id/fsd_btn_toggle"
 		android:layout_width="0dp"
 		android:layout_height="wrap_content"
@@ -31,7 +31,7 @@
 		app:layout_constraintEnd_toEndOf="@id/fsd_btn_disconnect"
 		app:layout_constraintStart_toStartOf="@id/fsd_btn_disconnect" />
 
-	<Button
+	<com.google.android.material.button.MaterialButton
 		android:id="@+id/fsd_btn_disconnect"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
@@ -44,16 +44,28 @@
 		app:layout_constraintTop_toTopOf="parent"
 		tools:visibility="visible" />
 
-	<Button
+	<com.google.android.material.button.MaterialButton
+		android:id="@+id/fsd_btn_observe"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:enabled="false"
+		android:layout_marginTop="15dp"
+		android:backgroundTint="@color/orange_700"
+		android:text="@string/fragment_single_device_observe_off_btn"
+		app:layout_constraintTop_toBottomOf="@id/fsd_btn_disconnect"
+		app:layout_constraintEnd_toEndOf="@id/fsd_btn_disconnect"
+		app:layout_constraintStart_toStartOf="@id/fsd_btn_disconnect" />
+
+	<com.google.android.material.button.MaterialButton
 		android:id="@+id/fsd_btn_connect"
 		android:layout_width="0dp"
 		android:layout_height="wrap_content"
 		android:layout_marginTop="15dp"
 		android:backgroundTint="#4CAF50"
 		android:text="@string/fragment_single_device_connect_btn"
-		app:layout_constraintEnd_toEndOf="@id/fsd_btn_disconnect"
-		app:layout_constraintStart_toStartOf="@id/fsd_btn_disconnect"
-		app:layout_constraintTop_toBottomOf="@+id/fsd_btn_disconnect" />
+		app:layout_constraintEnd_toEndOf="@id/fsd_btn_observe"
+		app:layout_constraintStart_toStartOf="@id/fsd_btn_observe"
+		app:layout_constraintTop_toBottomOf="@+id/fsd_btn_observe" />
 
 	<androidx.constraintlayout.widget.ConstraintLayout
 		android:id="@+id/fsd_cl_loader"

@@ -363,7 +363,7 @@ class BLE {
 			}
 		}
 
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+//		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
 			// region Android 11 callback
 			scanReceiverInstance = object: BroadcastReceiver() {
 				override fun onReceive(context: Context?, intent: Intent?) {
@@ -393,7 +393,7 @@ class BLE {
 				addAction(BluetoothDevice.ACTION_PAIRING_REQUEST)
 			})
 			// endregion
-		} else {
+//		} else {
 			// region Legacy callback
 			scanCallbackInstance = object : ScanCallback() {
 
@@ -419,7 +419,7 @@ class BLE {
 
 			}
 			// endregion
-		}
+//		}
 	}
 
 	/**
@@ -454,19 +454,19 @@ class BLE {
 			// Starts the scan
 			isScanRunning = true
 
-			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+//			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
 				adapter?.apply {
 					if (isDiscovering) cancelDiscovery()
 
 					startDiscovery()
 				}
-			} else {
+//			} else {
 				scanner?.startScan(
 					filters,
 					settings ?: defaultScanSettings,
 					scanCallbackInstance
 				)
-			}
+//			}
 
 			// Automatically stops the scan if a duration is specified
 			if (duration > 0) {
@@ -703,6 +703,7 @@ class BLE {
 		// Android 11+
 		this.scanReceiverInstance?.let {
 			this.adapter?.cancelDiscovery()
+			this.context.unregisterReceiver(it)
 			this.scanReceiverInstance = null
 		}
 	}

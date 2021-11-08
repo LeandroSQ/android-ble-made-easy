@@ -3,6 +3,8 @@
 
 	<!-- <editor-fold defaultstate="Collapsed" desc="Fragment Single Device" -->
 	<string name="fragment_single_device_toggle_btn">TOGGLE</string>
+	<string name="fragment_single_device_observe_off_btn">OBSERVE</string>
+	<string name="fragment_single_device_observe_on_btn">STOP OBSERVING</string>
 	<string name="fragment_single_device_disconnect_btn">DISCONNECT</string>
 	<string name="fragment_single_device_connect_btn">CONNECT</string>
 	<!-- </editor-fold> -->

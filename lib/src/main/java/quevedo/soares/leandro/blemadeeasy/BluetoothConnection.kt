@@ -63,6 +63,8 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	var rsii: Int = 0
 		private set
 
+	private var activeObservers = hashMapOf<String, OnCharacteristicValueChangeCallback<String>>()
+
 	// region Utility related methods
 	private fun log(message: String) {
 		if (this.verbose) Log.d("BluetoothConnection", message)
@@ -128,6 +130,15 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 
 				// Update the internal rsii variable
 				if (status == BluetoothGatt.GATT_SUCCESS) this@BluetoothConnection.rsii = rsii
+			}
+
+			override fun onCharacteristicChanged(gatt: BluetoothGatt?, characteristic: BluetoothGattCharacteristic?) {
+				super.onCharacteristicChanged(gatt, characteristic)
+
+				if (characteristic == null) return
+
+				val key = characteristic.uuid.toString()
+				activeObservers[key]?.invoke("", characteristic.getStringValue(0))
 			}
 		}
 	}
@@ -260,10 +271,28 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	// endregion
 	
 	// region Polling
-	fun observe(owner: LifecycleOwner, characteristic: String, interval: Long = 1000L, callback: OnCharacteristicValueChangeCallback<ByteArray?>) {
-		this.coroutineScope?.launch {
+	fun observe(owner: LifecycleOwner, characteristic: String, interval: Long = 1000L, callback: OnCharacteristicValueChangeCallback<String>): String {
+		// Generate an id for the observation
+		this.activeObservers[characteristic] = callback
+
+		genericAttributeProfile?.let { gatt ->
+			val c = this.getCharacteristic(gatt, characteristic)
+			if (c != null) {
+				c.getDescriptor(UUID.fromString(characteristic))?.let {
+					it.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+					gatt.writeDescriptor(it)
+				}
+				gatt.setCharacteristicNotification(c, true)
+			} else {
+				error("Characteristic $characteristic not found on device ${device.address}!")
+			}
+		}
+
+		/*this.coroutineScope?.launch {
 			var startValue: ByteArray? = null
-			while (owner.lifecycle.currentState != Lifecycle.State.DESTROYED) {
+
+			// If the lifecycle owner is not destroyed and the currentObserverId is active
+			while (owner.lifecycle.currentState != Lifecycle.State.DESTROYED && activeObservers.contains(observerId)) {
 				// Saves the start time
 				val startTime = System.currentTimeMillis()
 
@@ -287,7 +316,22 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 
 				delay(sleepTime)
 			}
+		}*/
+
+		return characteristic
+	}
+
+	fun stopObserving(characteristic: String) {
+		genericAttributeProfile?.let { gatt ->
+			val c = this.getCharacteristic(gatt, characteristic)
+			if (c != null) {
+				gatt.setCharacteristicNotification(c, false)
+			} else {
+				error("Characteristic $characteristic not found on device ${device.address}!")
+			}
 		}
+
+		this.activeObservers.remove(characteristic)
 	}
 	// endregion
 
@@ -333,8 +377,10 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 		}
 
 		// HACK: Android M+ requires a transport LE in order to skip the 133 of death status when connecting
-		this.genericAttributeProfile = if (VERSION.SDK_INT > VERSION_CODES.M) device.connectGatt(context, true, setupGattCallback(), BluetoothDevice.TRANSPORT_LE)
-		else device.connectGatt(context, false, setupGattCallback())
+		this.genericAttributeProfile = if (VERSION.SDK_INT > VERSION_CODES.M)
+			device.connectGatt(context, true, setupGattCallback(), BluetoothDevice.TRANSPORT_LE)
+		else
+			device.connectGatt(context, false, setupGattCallback())
 	}
 
 	/**

@@ -15,8 +15,10 @@ import androidx.navigation.fragment.navArgs
 import kotlinx.coroutines.*
 import quevedo.soares.leandro.blemadeeasy.BLE
 import quevedo.soares.leandro.blemadeeasy.BluetoothConnection
+import quevedo.soares.leandro.blemadeeasy.R
 import quevedo.soares.leandro.blemadeeasy.databinding.FragmentSingleDeviceBinding
 import quevedo.soares.leandro.blemadeeasy.exceptions.ScanTimeoutException
+import java.util.*
 
 /**
  * This is intended to control a single device
@@ -39,7 +41,9 @@ class SingleDeviceFragment : Fragment() {
 	private var connection: BluetoothConnection? = null
 
 	/* Misc */
-	private var command: Boolean = false
+	private var command = false
+	private var observerId: String? = null
+	private val isObserving get() = observerId != null
 
 	// region Fragment creation related methods
 	override fun onCreate(savedInstanceState: Bundle?) {
@@ -92,6 +96,7 @@ class SingleDeviceFragment : Fragment() {
 	private fun setDeviceConnectionStatus(isConnected: Boolean) {
 		binding.fsdBtnToggle.isEnabled = isConnected
 		binding.fsdBtnDisconnect.isEnabled = isConnected
+		binding.fsdBtnObserve.isEnabled = isConnected
 		binding.fsdBtnConnect.isEnabled = !isConnected
 	}
 
@@ -137,15 +142,16 @@ class SingleDeviceFragment : Fragment() {
 	private fun setupBinding() {
 		binding.apply {
 			// Set the on click listeners
-			fsdBtnToggle.setOnClickListener(this@SingleDeviceFragment::onButtonToggleClick)
-			fsdBtnConnect.setOnClickListener(this@SingleDeviceFragment::onButtonConnectClick)
-			fsdBtnDisconnect.setOnClickListener(this@SingleDeviceFragment::onButtonDisconnectClick)
+			fsdBtnToggle.setOnClickListener { onButtonToggleClick() }
+			fsdBtnConnect.setOnClickListener { onButtonConnectClick() }
+//			fsdBtnObserve.setOnClickListener { onButtonObserveClick() }
+			fsdBtnDisconnect.setOnClickListener { onButtonDisconnectClick() }
 		}
 	}
 	// endregion
 
 	// region Event listeners
-	private fun onButtonToggleClick(v: View) {
+	private fun onButtonToggleClick() {
 		lifecycleScope.launch {
 			// Update variables
 			updateStatus(true, "Sending data...")
@@ -167,7 +173,7 @@ class SingleDeviceFragment : Fragment() {
 		}
 	}
 
-	private fun onButtonConnectClick(v: View) {
+	private fun onButtonConnectClick() {
 		lifecycleScope.launch {
 			try {
 				// Update variables
@@ -187,7 +193,7 @@ class SingleDeviceFragment : Fragment() {
 		}
 	}
 
-	private fun onButtonDisconnectClick(v: View) {
+	private fun onButtonDisconnectClick() {
 		lifecycleScope.launch {
 			// Update variables
 			updateStatus(true, "Disconnecting...")
@@ -200,6 +206,38 @@ class SingleDeviceFragment : Fragment() {
 			updateStatus(false, "Disconnected!")
 			setDeviceConnectionStatus(false)
 		}
+	}
+
+	private fun onButtonObserveClick() {
+		val characteristic = "0972EF8C-7613-4075-AD52-756F33D4DA91"
+
+		this.connection?.let {
+			if (isObserving) {
+				this.binding.fsdBtnObserve.setText(R.string.fragment_single_device_observe_on_btn)
+				it.stopObserving(characteristic)
+			} else {
+				this.binding.fsdBtnObserve.setText(R.string.fragment_single_device_observe_off_btn)
+				it.observe(this, characteristic) { old, new ->
+					showToast("Value changed to $new")
+				}
+			}
+		}
+
+		/*this.connection?.let {
+			if (this.isObserving) {
+				// Stop observing
+				this.observerId?.let { uuid -> it.stopObserving(uuid) }
+				this.binding.fsdBtnObserve.setText(R.string.fragment_single_device_observe_on_btn)
+			} else {
+				val read = "4ac8a682-9736-4e5d-932b-e9b31405049c"
+				val write = "0972EF8C-7613-4075-AD52-756F33D4DA91"
+				// Start observing
+				this.observerId = it.observe(this, write) { value, _ ->
+					showToast("Value changed to $value")
+				}
+				this.binding.fsdBtnObserve.setText(R.string.fragment_single_device_observe_off_btn)
+			}
+		}*/
 	}
 
 	private fun onDeviceConnected(connection: BluetoothConnection) {
