@@ -20,13 +20,42 @@ allprojects {
 dependencies {
     ...
 
-    implementation 'com.github.LeandroSQ:android-ble-made-easy:1.4.0'
+    implementation 'com.github.LeandroSQ:android-ble-made-easy:v1.5.1'
 
     ...
 }
 ```
 
-- **Step 3.** Gradle sync and you're ready to go!
+- **Step 3.** Gradle sync
+
+- **Step 4.** Add these permissions to your **manifest.xml file**
+```xml
+<uses-permission
+    android:name="android.permission.BLUETOOTH"
+    android:maxSdkVersion="30" />
+<uses-permission
+    android:name="android.permission.BLUETOOTH_ADMIN"
+    android:maxSdkVersion="30" />
+
+<!-- These 2 bellow, only if you are targeting Android 12+ -->
+<uses-permission android:name="android.permission.BLUETOOTH_CONNECT"
+    tools:targetApi="s" />
+<uses-permission
+    android:name="android.permission.BLUETOOTH_SCAN"
+    android:usesPermissionFlags="neverForLocation"
+    tools:targetApi="s" />
+
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+<!-- These 2 bellow, only if you are targeting Android 10+ -->
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+<uses-feature android:name="android.hardware.bluetooth_le" android:required="true"/>
+<uses-feature android:name="android.hardware.bluetooth" android:required="true"/>
+```
+
+And you are ready to go!
 
 ---
 
