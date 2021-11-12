@@ -144,7 +144,7 @@ class SingleDeviceFragment : Fragment() {
 			// Set the on click listeners
 			fsdBtnToggle.setOnClickListener { onButtonToggleClick() }
 			fsdBtnConnect.setOnClickListener { onButtonConnectClick() }
-//			fsdBtnObserve.setOnClickListener { onButtonObserveClick() }
+			fsdBtnObserve.setOnClickListener { onButtonObserveClick() }
 			fsdBtnDisconnect.setOnClickListener { onButtonDisconnectClick() }
 		}
 	}
@@ -209,35 +209,19 @@ class SingleDeviceFragment : Fragment() {
 	}
 
 	private fun onButtonObserveClick() {
-		val characteristic = "0972EF8C-7613-4075-AD52-756F33D4DA91"
-
 		this.connection?.let {
-			if (isObserving) {
-				this.binding.fsdBtnObserve.setText(R.string.fragment_single_device_observe_on_btn)
-				it.stopObserving(characteristic)
-			} else {
-				this.binding.fsdBtnObserve.setText(R.string.fragment_single_device_observe_off_btn)
-				it.observe(this, characteristic) { old, new ->
-					showToast("Value changed to $new")
+			it.readableCharacteristics.forEach { characteristic ->
+				if (isObserving) {
+					this.binding.fsdBtnObserve.setText(R.string.fragment_single_device_observe_on_btn)
+					it.stopObserving(characteristic)
+				} else {
+					this.binding.fsdBtnObserve.setText(R.string.fragment_single_device_observe_off_btn)
+					it.observeString(characteristic, owner = this.viewLifecycleOwner, interval = 1000L) { new ->
+						showToast("Value changed to $new")
+					}
 				}
 			}
 		}
-
-		/*this.connection?.let {
-			if (this.isObserving) {
-				// Stop observing
-				this.observerId?.let { uuid -> it.stopObserving(uuid) }
-				this.binding.fsdBtnObserve.setText(R.string.fragment_single_device_observe_on_btn)
-			} else {
-				val read = "4ac8a682-9736-4e5d-932b-e9b31405049c"
-				val write = "0972EF8C-7613-4075-AD52-756F33D4DA91"
-				// Start observing
-				this.observerId = it.observe(this, write) { value, _ ->
-					showToast("Value changed to $value")
-				}
-				this.binding.fsdBtnObserve.setText(R.string.fragment_single_device_observe_off_btn)
-			}
-		}*/
 	}
 
 	private fun onDeviceConnected(connection: BluetoothConnection) {

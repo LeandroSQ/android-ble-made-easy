@@ -12,13 +12,15 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import quevedo.soares.leandro.blemadeeasy.exceptions.ConnectionClosingException
+import quevedo.soares.leandro.blemadeeasy.models.BluetoothCharacteristic
+import quevedo.soares.leandro.blemadeeasy.models.BluetoothService
 import quevedo.soares.leandro.blemadeeasy.typealiases.Callback
 import quevedo.soares.leandro.blemadeeasy.typealiases.EmptyCallback
 import java.nio.charset.Charset
 import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 
-typealias OnCharacteristicValueChangeCallback<T> = (old: T, new: T) -> Unit
+typealias OnCharacteristicValueChangeCallback<T> = (new: T) -> Unit
 
 @Suppress("unused")
 class BluetoothConnection internal constructor(private val device: BluetoothDevice) {
@@ -33,6 +35,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 
 	/* Misc */
 	private var operationsInQueue: AtomicInteger = AtomicInteger(0)
+	private var activeObservers = hashMapOf<String, OnCharacteristicValueChangeCallback<ByteArray>>()
 
 	internal var coroutineScope: CoroutineScope? = null
 
@@ -63,7 +66,25 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	var rsii: Int = 0
 		private set
 
-	private var activeObservers = hashMapOf<String, OnCharacteristicValueChangeCallback<String>>()
+	/**
+	 * Holds the discovered services
+	 **/
+	val services get() = this.genericAttributeProfile?.services?.map { BluetoothService(it) } ?: listOf()
+
+	/** A list with all notifiable characteristics
+	 * @see observe
+	 **/
+	val notifiableCharacteristics get() = this.dumpCharacteristics { it.isNotifiable }
+
+	/** A list with all writable characteristics
+	 * @see write
+	 **/
+	val writableCharacteristics get() = this.dumpCharacteristics { it.isWritable }
+
+	/** A list with all readable characteristics
+	 * @see read
+	 **/
+	val readableCharacteristics get() = this.dumpCharacteristics { it.isReadable }
 
 	// region Utility related methods
 	private fun log(message: String) {
@@ -76,6 +97,16 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 
 	private fun error(message: String) {
 		Log.e("BluetoothConnection", message)
+	}
+
+	private fun dumpCharacteristics(filter: (BluetoothCharacteristic) -> Boolean): List<String> {
+		return this.services.map { service ->
+			service.characteristics.filter { characteristic ->
+				filter(characteristic)
+			}.map { characteristic ->
+				characteristic.uuid.toString().lowercase()
+			}
+		}.flatten().distinct()
 	}
 
 	private fun setupGattCallback(): BluetoothGattCallback {
@@ -116,6 +147,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 
 				coroutineScope?.launch {
 					if (status == BluetoothGatt.GATT_SUCCESS) {
+						log("onServicesDiscovered: ${gatt?.services?.size ?: 0} services found!")
 						connectionCallback?.invoke(true)
 					} else {
 						error("Error while discovering services at ${device.address}! Status: $status")
@@ -129,33 +161,40 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 				super.onReadRemoteRssi(gatt, rssi, status)
 
 				// Update the internal rsii variable
-				if (status == BluetoothGatt.GATT_SUCCESS) this@BluetoothConnection.rsii = rsii
+				if (status == BluetoothGatt.GATT_SUCCESS) {
+					log("onReadRemoteRssi: $rssi")
+					this@BluetoothConnection.rsii = rsii
+				}
 			}
 
 			override fun onCharacteristicChanged(gatt: BluetoothGatt?, characteristic: BluetoothGattCharacteristic?) {
 				super.onCharacteristicChanged(gatt, characteristic)
-
 				if (characteristic == null) return
 
-				val key = characteristic.uuid.toString()
-				activeObservers[key]?.invoke("", characteristic.getStringValue(0))
+				log("onCharacteristicChanged: $characteristic")
+
+				val key = characteristic.uuid.toString().lowercase()
+				coroutineScope?.launch {
+					activeObservers[key]?.invoke(characteristic.value)
+				}
 			}
+
 		}
 	}
 
-	private fun getCharacteristic(gatt: BluetoothGatt, characteristic: String): BluetoothGattCharacteristic? {
+	private fun getCharacteristic(gatt: BluetoothGatt, characteristic: String): BluetoothCharacteristic? {
 		// Converts the specified string into an UUID
 		val characteristicUuid = UUID.fromString(characteristic)
 
 		// Iterates trough every service on the gatt
 		gatt.services?.forEach { service ->
 			// Iterate trough every characteristic on the service
-			service.characteristics.forEach { characteristic ->
-				// If matches the uuid, then return it
-				if (characteristic.uuid == characteristicUuid) return characteristic
+			service.getCharacteristic(characteristicUuid)?.let {
+				return BluetoothCharacteristic(it)
 			}
 		}
 
+		this.error("Characteristic $characteristic not found on device ${device.address}!")
 		return null
 	}
 	// endregion
@@ -190,23 +229,21 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 		this.log("Writing to device ${device.address} (${message.size} bytes)")
 		this.beginOperation()
 
-		val characteristicUuid = UUID.fromString(characteristic)
-
-		genericAttributeProfile?.let { gatt ->
-			gatt.services?.forEach { service ->
-				service.characteristics.forEach { characteristic ->
-					if (characteristic.uuid == characteristicUuid) {
-						characteristic.value = message
-						return gatt.writeCharacteristic(characteristic).also {
-							if (!it) log("Could not write to device ${device.address}")
-							this.finishOperation()
-						}
-					}
+		// Null safe let of the generic attribute profile
+		this.genericAttributeProfile?.let { gatt ->
+			// Searches for the characteristic
+			getCharacteristic(gatt, characteristic)?.let {
+				// Tries to write its value
+				val success = it.write(gatt, message)
+				if (success) {
+					this.finishOperation()
+					return true
+				} else {
+					log("Could not write to device ${device.address}")
 				}
 			}
 		}
 
-		error("Characteristic $characteristic not found on device ${device.address}!")
 		this.finishOperation()
 		return false
 	}
@@ -239,18 +276,15 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 		// Null safe let of the generic attribute profile
 		genericAttributeProfile?.let { gatt ->
 			// Searches for the characteristic
-			val c = this.getCharacteristic(gatt, characteristic)
-			if (c != null) {
+			this.getCharacteristic(gatt, characteristic)?.let {
 				// Tries to read its value, if successful return it
-				if (gatt.readCharacteristic(c)) {
-					return c.value.also {
-						this.finishOperation()
-					}
+				val value = it.read(gatt)
+				if (value != null) {
+					this.finishOperation()
+					return value
 				} else {
 					error("Failed to read characteristic $characteristic on device ${device.address}")
 				}
-			} else {
-				error("Characteristic $characteristic not found on device ${device.address}!")
 			}
 		}
 
@@ -269,69 +303,107 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	 **/
 	fun read(characteristic: String, charset: Charset = Charsets.UTF_8): String? = this.read(characteristic)?.let { String(it, charset) }
 	// endregion
-	
-	// region Polling
-	fun observe(owner: LifecycleOwner, characteristic: String, interval: Long = 1000L, callback: OnCharacteristicValueChangeCallback<String>): String {
-		// Generate an id for the observation
-		this.activeObservers[characteristic] = callback
 
-		genericAttributeProfile?.let { gatt ->
-			val c = this.getCharacteristic(gatt, characteristic)
-			if (c != null) {
-				c.getDescriptor(UUID.fromString(characteristic))?.let {
-					it.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-					gatt.writeDescriptor(it)
-				}
-				gatt.setCharacteristicNotification(c, true)
-			} else {
-				error("Characteristic $characteristic not found on device ${device.address}!")
-			}
-		}
+	// region Value observation related methods
+	private fun legacyObserve(owner: LifecycleOwner, gatt: BluetoothGatt, characteristic: BluetoothCharacteristic, callback: OnCharacteristicValueChangeCallback<ByteArray>, interval: Long) {
+		this.coroutineScope?.launch {
+			var lastValue: ByteArray? = null
 
-		/*this.coroutineScope?.launch {
-			var startValue: ByteArray? = null
-
-			// If the lifecycle owner is not destroyed and the currentObserverId is active
-			while (owner.lifecycle.currentState != Lifecycle.State.DESTROYED && activeObservers.contains(observerId)) {
+			// While the lifecycle owner is not destroyed and the observer is in the activeObservers
+			val key = characteristic.uuid.toString().lowercase()
+			while(owner.lifecycle.currentState != Lifecycle.State.DESTROYED && activeObservers.containsKey(key)) {
 				// Saves the start time
 				val startTime = System.currentTimeMillis()
 
-				// Fetch the characteristic current value
-				val currentValue = read(characteristic)
-				// Check if it has changed since last interval
-				if (!currentValue.contentEquals(startValue)) {
-					// It has changed, update its value and invoke the callback
-					callback.invoke(startValue, currentValue)
-					startValue = currentValue
+				// Read the characteristic
+				characteristic.read(gatt)?.let { currentValue ->
+					log("legacyObserve: [${currentValue.joinToString(", ")}]")
+
+					// Check if it has changed
+					if (!currentValue.contentEquals(lastValue)) {
+						// It has, invoke the callback and store the current value
+						if (lastValue != null) {
+							callback.invoke(currentValue)
+							log("legacyObserve: Value changed!")
+						}
+
+						lastValue = currentValue
+					}
 				}
 
-				// Saves the end time
-				val endTime = System.currentTimeMillis()
 				// Calculate the elapsed time and subtract it from the interval time
+				val endTime = System.currentTimeMillis()
 				val elapsedTime = endTime - startTime
 				val sleepTime = (interval - elapsedTime).coerceAtLeast(0L)
 
 				// Updates too close can be harmful to the battery, warn the user
-				if (sleepTime <= 0L) warn("The elapsed time ${elapsedTime} between reads exceeds the specified interval of ${interval}ms. You should consider increasing the interval!")
+				if (sleepTime <= 0L) warn("The elapsed time $elapsedTime between reads exceeds the specified interval of ${interval}ms. You should consider increasing the interval!")
 
 				delay(sleepTime)
 			}
-		}*/
-
-		return characteristic
+		}
 	}
 
-	fun stopObserving(characteristic: String) {
-		genericAttributeProfile?.let { gatt ->
-			val c = this.getCharacteristic(gatt, characteristic)
-			if (c != null) {
-				gatt.setCharacteristicNotification(c, false)
-			} else {
-				error("Characteristic $characteristic not found on device ${device.address}!")
+	/**
+	 * Observe a given [characteristic]
+	 * @see stopObserving
+	 *
+	 * If the characteristic does not contain property [BluetoothGattCharacteristic.PROPERTY_NOTIFY] it will try to poll the value
+	 *
+	 * @see observeString
+	 *
+	 * @param characteristic The characteristic to observe
+	 * @param callback The lambda to be called whenever a change is detected
+	 * @param interval *Optional* only used for characteristics that doesn't have the NOTIFY property, define the amount of time to wait between readings
+	 * @param owner *Optional* only used for characteristics that doesn't have the NOTIFY property, define the lifecycle owner of the legacy observer really useful to avoid memory leaks
+	 **/
+	fun observe(characteristic: String, interval: Long = 5000, owner: LifecycleOwner? = null, callback: OnCharacteristicValueChangeCallback<ByteArray>) {
+		// Generate an id for the observation
+		this.activeObservers[characteristic.lowercase()] = callback
+
+		this.genericAttributeProfile?.let { gatt ->
+			this.getCharacteristic(gatt, characteristic)?.let {
+				if (!it.isNotifiable && it.isReadable && owner != null && coroutineScope != null) {
+					this.legacyObserve(owner, gatt, it, callback, interval)
+				} else {
+					it.enableNotify(gatt)
+				}
 			}
 		}
+	}
 
-		this.activeObservers.remove(characteristic)
+	/**
+	 * Observe a given [characteristic]
+	 * @see stopObserving
+	 *
+	 * If the characteristic does not contain property [BluetoothGattCharacteristic.PROPERTY_NOTIFY] it will try to poll the value
+	 *
+	 * @see observe
+	 *
+	 * @param characteristic The characteristic to observe
+	 * @param callback The lambda to be called whenever a change is detected
+	 * @param interval *Optional* only used for characteristics that doesn't have the NOTIFY property, define the amount of time to wait between readings
+	 * @param owner *Optional* only used for characteristics that doesn't have the NOTIFY property, define the lifecycle owner of the legacy observer really useful to avoid memory leaks
+	 **/
+	fun observeString(characteristic: String, interval: Long = 5000, owner: LifecycleOwner? = null, charset: Charset = Charsets.UTF_8, callback: OnCharacteristicValueChangeCallback<String>) {
+		this.observe(characteristic, interval = interval, owner = owner, callback = {
+			callback.invoke(it.toString(charset))
+		})
+	}
+
+	/**
+	 * Stops observing the characteristic
+	 * @see observeString
+	 * @see observe
+	 *
+	 * @param characteristic The characteristic to observe
+	 **/
+	fun stopObserving(characteristic: String) {
+		this.genericAttributeProfile?.let { gatt ->
+			this.getCharacteristic(gatt, characteristic)?.disableNotify(gatt)
+		}
+
+		this.activeObservers.remove(characteristic.lowercase())
 	}
 	// endregion
 
@@ -352,12 +424,12 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 		log("Disconnected succesfully from ${device.address}!\nClosing connection...")
 
 		try {
-			connectionActive = false
-			connectionCallback?.invoke(false)
-			onDisconnect?.invoke()
-			genericAttributeProfile?.close()
-			genericAttributeProfile = null
-			closingConnection = false
+			this.connectionActive = false
+			this.connectionCallback?.invoke(false)
+			this.onDisconnect?.invoke()
+			this.genericAttributeProfile?.close()
+			this.genericAttributeProfile = null
+			this.closingConnection = false
 		} catch (e: Exception) {
 			log("Ignoring closing connection with ${device.address} exception -> ${e.message}")
 		}
@@ -378,9 +450,9 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 
 		// HACK: Android M+ requires a transport LE in order to skip the 133 of death status when connecting
 		this.genericAttributeProfile = if (VERSION.SDK_INT > VERSION_CODES.M)
-			device.connectGatt(context, true, setupGattCallback(), BluetoothDevice.TRANSPORT_LE)
+			this.device.connectGatt(context, true, setupGattCallback(), BluetoothDevice.TRANSPORT_LE)
 		else
-			device.connectGatt(context, false, setupGattCallback())
+			this.device.connectGatt(context, false, setupGattCallback())
 	}
 
 	/**
@@ -392,13 +464,14 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 		// Being 10s in total of timeout
 		var counter = 0
 		while (operationsInQueue.get() > 0 && counter < 20) {
-			log("${operationsInQueue.get()} operations in queue! Waiting for 500ms (${counter * 500}ms elapsed)")
+			this.log("${operationsInQueue.get()} operations in queue! Waiting for 500ms (${counter * 500}ms elapsed)")
+
 			delay(500)
 			counter++
 		}
 
 		// HACK: Workaround for Lollipop 21 and 22
-		startDisconnection()
+		this.startDisconnection()
 	}
 	// endregion
 

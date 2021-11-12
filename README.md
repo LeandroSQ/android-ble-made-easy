@@ -14,13 +14,32 @@ allprojects {
     }
 }
 ```
+- **Step 1.1** Only **if you have the file *settings.gradle*** at your project root folder
+    - Add the JitPack repository to your **project settings.gradle file**
+    ```groovy
+    dependencyResolutionManagement {
+        repositories {
+            ...
+            maven { url 'https://jitpack.io' }
+        }
+    }
+    ```
+    - Add the JitPack repository to your **project gradle file**
+    ```groovy
+    buildscript {
+        repositories {
+            ...
+            maven { url 'https://jitpack.io' }
+        }
+    }
+    ```
 
 - **Step 2.** Add the implementation dependency to your **app gradle file**
 ```groovy
 dependencies {
     ...
 
-    implementation 'com.github.LeandroSQ:android-ble-made-easy:v1.5.1'
+    implementation 'com.github.LeandroSQ:android-ble-made-easy:1.5.2'
 
     ...
 }
@@ -311,6 +330,43 @@ ble.connect(device)?.let { connection ->
     val value = connection.read("00000000-0000-0000-0000-000000000000")
     connection.write("00000000-0000-0000-0000-000000000000", "0")
     connection.close()
+}
+```
+
+### Observing changes
+
+There are two ways to observe changes, the first is using the native BLE NOTIFY, which is the preferred option.
+
+```kotlin
+// If you want to make use of the NOTIFY functionality
+ble.connect(device)?.let { connection ->
+
+    // For watching bytes
+    connection.observe(characteristic = "00000000-0000-0000-0000-000000000000") { value: ByteArray ->
+        // This will run everytime the characteristic changes it's value
+    }
+
+    // For watching strings
+    connection.observeString(characteristic = "00000000-0000-0000-0000-000000000000", charset = Charsets.UTF_8) { value: String ->
+        // This will run everytime the characteristic changes it's value
+    }
+}
+
+```
+
+The second way is to manually read the characteristic in a fixed interval and compare with the last value. Which uses more battery, isn't as effective and should only be used when the characteristic doesn't provide the NOTIFY property.
+Fortunately the library handles both ways in a similar API.
+
+```kotlin
+// If you want to use NOTIFY when available and fallback to the legacy way when it isn't
+ble.connect(device)?.let { connection ->
+    connection.observe(
+        characteristic = "00000000-0000-0000-0000-000000000000",
+        owner = viewLifeCycleOwner, // The Lifecycle Owner to attach to
+        interval = 1000L // The interval in ms (in this example 1 second)
+    ) { value: ByteArray ->
+        // This will run everytime the characteristic changes it's value
+    }
 }
 ```
 

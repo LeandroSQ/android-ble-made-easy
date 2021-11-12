@@ -363,8 +363,8 @@ class BLE {
 			}
 		}
 
-//		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-			// region Android 11 callback
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+			// region Android 10 callback
 			scanReceiverInstance = object: BroadcastReceiver() {
 				override fun onReceive(context: Context?, intent: Intent?) {
 					// Ignore other events
@@ -388,38 +388,39 @@ class BLE {
 				addAction(BluetoothDevice.ACTION_ACL_CONNECTED)
 				addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
 				addAction(BluetoothDevice.ACTION_ACL_DISCONNECT_REQUESTED)
-				addAction(BluetoothDevice.ACTION_ALIAS_CHANGED)
 				addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
 				addAction(BluetoothDevice.ACTION_PAIRING_REQUEST)
+
+				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) addAction(BluetoothDevice.ACTION_ALIAS_CHANGED)
 			})
 			// endregion
-//		} else {
-			// region Legacy callback
-			scanCallbackInstance = object : ScanCallback() {
+		}
 
-				override fun onScanResult(callbackType: Int, result: ScanResult?) {
-					super.onScanResult(callbackType, result)
+		// region Legacy callback
+		scanCallbackInstance = object : ScanCallback() {
 
-					// Gets the device from the result
-					result?.device?.let { device ->
-						val advertisingID = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) result.advertisingSid else -1
+			override fun onScanResult(callbackType: Int, result: ScanResult?) {
+				super.onScanResult(callbackType, result)
 
-						onDeviceFound(device, result.rssi, advertisingID)
-					}
+				// Gets the device from the result
+				result?.device?.let { device ->
+					val advertisingID = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) result.advertisingSid else -1
+
+					onDeviceFound(device, result.rssi, advertisingID)
 				}
-
-				override fun onScanFailed(errorCode: Int) {
-					super.onScanFailed(errorCode)
-
-					log("Scan failed! $errorCode")
-
-					// Calls the error callback
-					onError?.invoke(errorCode)
-				}
-
 			}
-			// endregion
-//		}
+
+			override fun onScanFailed(errorCode: Int) {
+				super.onScanFailed(errorCode)
+
+				log("Scan failed! $errorCode")
+
+				// Calls the error callback
+				onError?.invoke(errorCode)
+			}
+
+		}
+		// endregion
 	}
 
 	/**
