@@ -69,11 +69,12 @@ class BLE {
 	private val defaultScanSettings by lazy {
 		val builder = ScanSettings.Builder()
 			.setScanMode(ScanSettings.SCAN_MODE_BALANCED)
-			.setReportDelay(GATT_133_TIMEOUT)
+
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S)
+			builder.setReportDelay(GATT_133_TIMEOUT)
 
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
 			builder.setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
-				//.setMatchMode(ScanSettings.MATCH_MODE_AGGRESSIVE)
 				.setNumOfMatches(ScanSettings.MATCH_NUM_ONE_ADVERTISEMENT)
 
 
@@ -331,6 +332,7 @@ class BLE {
 	// endregion
 
 	// region Caching related methods
+	@SuppressLint("MissingPermission")
 	private fun fetchCachedDevice(macAddress: String): BluetoothDevice? {
 		this.adapter?.getRemoteDevice(macAddress)?.let { device ->
 			if (device.type != BluetoothDevice.DEVICE_TYPE_UNKNOWN) {
@@ -344,6 +346,7 @@ class BLE {
 	// endregion
 
 	// region Device scan related methods
+	@SuppressLint("MissingPermission")
 	private fun setupScanCallback(onDiscover: Callback<BLEDevice>? = null, onUpdate: Callback<List<BLEDevice>>? = null, onError: Callback<Int>? = null) {
 		fun onDeviceFound(device: BluetoothDevice, rssi: Int, advertisingId: Int = -1) {
 			log("Scan result! ${device.name} (${device.address}) ${rssi}dBm")
@@ -354,13 +357,14 @@ class BLE {
 				// If the device was already inserted on the list, update it's rsii value
 				it.device = device
 				if (it.rsii != rssi && rssi != 0) it.rsii = rssi
-				onUpdate?.invoke(discoveredDeviceList.toList())
 			} ?: run {
 				// If the device was not inserted before, add to the discovered device list
 				val bleDevice = BLEDevice(device, rssi, advertisingId)
 				discoveredDeviceList.add(bleDevice)
 				onDiscover?.invoke(bleDevice)
 			}
+
+			onUpdate?.invoke(discoveredDeviceList.toList())
 		}
 
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -438,11 +442,12 @@ class BLE {
 	 * Callbacks:
 	 * @param onFinish Called when the scan is finished with an Array of Bluetooth devices found
 	 * @param onDiscover Called whenever a new bluetooth device if found (Useful on realtime scans)
+	 * @param onUpdate Called whenever the list changes (e.g new device discovered, device name changed etc...)
 	 * @param onError Called whenever an error occurs on the scan (Of which will be automatically halted in case of errors)
 	 **/
 	@SuppressLint("InlinedApi")
 	@RequiresPermission(anyOf = [permission.BLUETOOTH_ADMIN, permission.BLUETOOTH_SCAN])
-	suspend fun scanAsync(filters: List<ScanFilter>? = null, settings: ScanSettings? = null, duration: Long = DEFAULT_TIMEOUT, onFinish: Callback<Array<BLEDevice>>? = null, onDiscover: Callback<BLEDevice>? = null, onUpdate: Callback<List<BLEDevice>>? = null, onError: Callback<Int>? = null ) {
+	fun scanAsync(filters: List<ScanFilter>? = null, settings: ScanSettings? = null, duration: Long = DEFAULT_TIMEOUT, onFinish: Callback<Array<BLEDevice>>? = null, onDiscover: Callback<BLEDevice>? = null, onUpdate: Callback<List<BLEDevice>>? = null, onError: Callback<Int>? = null ) {
 		this.coroutineScope.launch {
 			log("Starting scan...")
 
@@ -452,22 +457,15 @@ class BLE {
 			// Clears the discovered device list
 			discoveredDeviceList = arrayListOf()
 
-			// Starts the scan
+			// Starts the scanning
 			isScanRunning = true
+			adapter?.apply {
+				if (isDiscovering) cancelDiscovery()
 
-//			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-				adapter?.apply {
-					if (isDiscovering) cancelDiscovery()
-
-					startDiscovery()
-				}
-//			} else {
-				scanner?.startScan(
-					filters,
-					settings ?: defaultScanSettings,
-					scanCallbackInstance
-				)
-//			}
+				startDiscovery()
+			}
+			scanner?.startScan(filters, settings ?: defaultScanSettings, scanCallbackInstance)
+			scanner?.flushPendingScanResults(scanCallbackInstance)
 
 			// Automatically stops the scan if a duration is specified
 			if (duration > 0) {
@@ -551,7 +549,7 @@ class BLE {
 	 **/
 	@SuppressLint("InlinedApi")
 	@RequiresPermission(anyOf = [permission.BLUETOOTH_ADMIN, permission.BLUETOOTH_SCAN, permission.BLUETOOTH_CONNECT])
-	suspend fun scanForAsync(macAddress: String? = null, service: String? = null, name: String? = null, settings: ScanSettings? = null, timeout: Long = DEFAULT_TIMEOUT, onFinish: Callback<BluetoothConnection?>? = null, onError: Callback<Int>? = null) {
+	fun scanForAsync(macAddress: String? = null, service: String? = null, name: String? = null, settings: ScanSettings? = null, timeout: Long = DEFAULT_TIMEOUT, onFinish: Callback<BluetoothConnection?>? = null, onError: Callback<Int>? = null) {
 		this.coroutineScope.launch {
 			try {
 				onFinish?.invoke(scanFor(macAddress, service, name, settings, timeout))
@@ -584,6 +582,7 @@ class BLE {
 	 *
 	 * @return A nullable [BluetoothConnection] instance, when null meaning that the specified device was not found
 	 **/
+	@SuppressLint("MissingPermission")
 	suspend fun scanFor(macAddress: String? = null, service: String? = null, name: String? = null, settings: ScanSettings? = null, timeout: Long = DEFAULT_TIMEOUT): BluetoothConnection? {
 		return suspendCancellableCoroutine { continuation ->
 			// Validates the arguments
@@ -688,6 +687,7 @@ class BLE {
 	/**
 	 * Stops the scan started by [scan]
 	 **/
+	@SuppressLint("MissingPermission")
 	fun stopScan() {
 		this.log("Stopping scan...")
 
