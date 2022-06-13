@@ -44,7 +44,4 @@ jobs:
           folder: docs
 
       - name: Git Push changes
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
-          branch: master
+      - uses: stefanzweifel/git-auto-commit-action@v4
