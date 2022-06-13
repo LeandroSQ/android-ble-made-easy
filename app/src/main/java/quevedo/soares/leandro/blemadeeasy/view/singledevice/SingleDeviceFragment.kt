@@ -94,10 +94,13 @@ class SingleDeviceFragment : Fragment() {
 	}
 
 	private fun setDeviceConnectionStatus(isConnected: Boolean) {
-		binding.fsdBtnToggle.isEnabled = isConnected
-		binding.fsdBtnDisconnect.isEnabled = isConnected
-		binding.fsdBtnObserve.isEnabled = isConnected
-		binding.fsdBtnConnect.isEnabled = !isConnected
+		binding.root.post {
+			binding.fsdBtnToggle.isEnabled = isConnected
+			binding.fsdBtnDisconnect.isEnabled = isConnected
+			binding.fsdBtnObserve.isEnabled = isConnected
+			binding.fsdBtnConnect.isEnabled = !isConnected
+		}
+
 	}
 
 	@SuppressLint("MissingPermission")

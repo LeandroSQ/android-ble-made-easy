@@ -1,4 +1,4 @@
-package quevedo.soares.leandro.androideasyble.view.singledevice
+package quevedo.soares.leandro.blemadeeasy.view.singledevice
 
 import android.annotation.SuppressLint
 import android.os.Bundle
@@ -7,17 +7,15 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.MutableLiveData
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import kotlinx.coroutines.*
-import quevedo.soares.leandro.androideasyble.BLE
-import quevedo.soares.leandro.androideasyble.BluetoothConnection
-import quevedo.soares.leandro.androideasyble.R
-import quevedo.soares.leandro.androideasyble.databinding.FragmentSingleDeviceBinding
-import quevedo.soares.leandro.androideasyble.exceptions.ScanTimeoutException
+import quevedo.soares.leandro.blemadeeasy.databinding.FragmentSingleDeviceBinding
+import quevedo.soares.leandro.blemadeeasy.BLE
+import quevedo.soares.leandro.blemadeeasy.BluetoothConnection
+import quevedo.soares.leandro.blemadeeasy.exceptions.ScanTimeoutException
 
 class SingleDeviceFragmentTest : Fragment() {
 
@@ -53,8 +51,7 @@ class SingleDeviceFragmentTest : Fragment() {
 	}
 
 	override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-		binding = DataBindingUtil.inflate(inflater, R.layout.fragment_single_device, container, false)
-		binding.lifecycleOwner = viewLifecycleOwner
+		binding = FragmentSingleDeviceBinding.inflate(inflater, container, false)
 		return binding.root
 	}
 
@@ -169,11 +166,6 @@ class SingleDeviceFragmentTest : Fragment() {
 
 	private fun setupBinding() {
 		binding.apply {
-			// Bind the live data
-			isLoading = this@SingleDeviceFragmentTest.isLoading
-			isDeviceConnected = this@SingleDeviceFragmentTest.isDeviceConnected
-			currentStatusText = this@SingleDeviceFragmentTest.currentStatusText
-
 			// Set the on click listeners
 			fsdBtnToggle.setOnClickListener(this@SingleDeviceFragmentTest::onButtonToggleClick)
 			fsdBtnConnect.setOnClickListener(this@SingleDeviceFragmentTest::onButtonConnectClick)

@@ -1,6 +1,7 @@
 package quevedo.soares.leandro.blemadeeasy.view.scandevices
 
 import android.annotation.SuppressLint
+import android.bluetooth.le.ScanSettings
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -87,28 +88,29 @@ class ScanDevicesFragment : Fragment() {
 		lifecycleScope.launch {
 			try {
 				// Checks the bluetooth permissions
-				val permissionsGranted = ble?.verifyPermissions(rationaleRequestCallback = { next ->
+				val isPermissionsGranted = ble?.verifyPermissions(rationaleRequestCallback = { next ->
+					// Shows UI feedback if the bluetooth permissions are denied by user or rationale is required
 					showToast("We need the bluetooth permissions!")
 					next()
 				})
 				// Shows UI feedback if the permissions were denied
-				if (permissionsGranted == false) {
+				if (isPermissionsGranted == false) {
 					showToast("Permissions denied!")
 					return@launch
 				}
 
 				// Checks the bluetooth adapter state
-				val bluetoothActive = ble?.verifyBluetoothAdapterState()
+				val isBluetoothActive = ble?.verifyBluetoothAdapterState()
 				// Shows UI feedback if the adapter is turned off
-				if (bluetoothActive == false) {
+				if (isBluetoothActive == false) {
 					showToast("Bluetooth adapter off!")
 					return@launch
 				}
 
 				// Checks the location services state
-				val locationActive = ble?.verifyLocationState()
+				val isLocationActive = ble?.verifyLocationState()
 				// Shows UI feedback if location services are turned off
-				if (locationActive == false) {
+				if (isLocationActive == false) {
 					showToast("Location services off!")
 					return@launch
 				}
@@ -128,6 +130,7 @@ class ScanDevicesFragment : Fragment() {
 		}
 	}
 
+	@SuppressLint("MissingPermission")
 	private fun startBluetoothScan() {
 		lifecycleScope.launch {
 			binding.fmdPbLoader.isVisible = true
