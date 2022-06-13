@@ -203,9 +203,9 @@ Theoretically compatible all the way down to API 18, but made targeting API 21+.
 
 All the functions and variables you're gonna be using are very well documented with KotlinDOC.
 So you can get autocompletion information on Android Studio.
-But if you want to take a look without installing it... You can take a look on the [dokka generated documentation](lib/build/dokka/gfm/lib/index.md)
+But if you want to take a look without installing it... You can take a look on the [dokka generated documentation](https://leandrosq.github.io/android-ble-made-easy/index.html)
 
-[![.github/workflows/wiki.yml](https://github.com/LeandroSQ/android-ble-made-easy/actions/workflows/wiki.yml/badge.svg)](https://github.com/LeandroSQ/android-ble-made-easy/actions/workflows/wiki.yml)
+[![.github/workflows/docs.yml](https://github.com/LeandroSQ/android-ble-made-easy/actions/workflows/docs.yml/badge.svg)](https://github.com/LeandroSQ/android-ble-made-easy/actions/workflows/docs.yml)
 
 ### Both low level bytes and String conversion
 
