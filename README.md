@@ -2,10 +2,10 @@
 # Android BLE Made Easy
 An easy to use, kotlin friendly BLE library for Android.
 
-[![](https://jitpack.io/v/LeandroSQ/android-ble-made-easy.svg)](https://jitpack.io/#LeandroSQ/android-ble-made-easy)
+[![](https://jitpack.io/v/LeandroSQ/android-ble-made-easy.svg)](https://jitpack.io/#LeandroSQ/android-ble-made-easy) [![API](https://img.shields.io/badge/API-21%2B-blue.svg?style=flat)](https://android-arsenal.com/api?level=21)
 
 ## Installing
-- **Step 1.** Add the JitPackj repository to your **project gradle file**
+- **Step 1.** Add the JitPack repository to your **project gradle file**
 ```groovy
 allprojects {
     repositories {
@@ -14,19 +14,67 @@ allprojects {
     }
 }
 ```
+- **Step 1.1** Only **if you have the file *settings.gradle*** at your project root folder
+    - Add the JitPack repository to your **project settings.gradle file**
+    ```groovy
+    dependencyResolutionManagement {
+        repositories {
+            ...
+            maven { url 'https://jitpack.io' }
+        }
+    }
+    ```
+    - Add the JitPack repository to your **project gradle file**
+    ```groovy
+    buildscript {
+        repositories {
+            ...
+            maven { url 'https://jitpack.io' }
+        }
+    }
+    ```
 
 - **Step 2.** Add the implementation dependency to your **app gradle file**
 ```groovy
 dependencies {
     ...
 
-    implementation 'com.github.LeandroSQ:android-ble-made-easy:1.5.3'
+    implementation 'com.github.LeandroSQ:android-ble-made-easy:1.5.2'
 
     ...
 }
 ```
 
-- **Step 3.** Gradle sync and you're ready to go!
+- **Step 3.** Gradle sync
+
+- **Step 4.** Add these permissions to your **manifest.xml file**
+```xml
+<uses-permission
+    android:name="android.permission.BLUETOOTH"
+    android:maxSdkVersion="30" />
+<uses-permission
+    android:name="android.permission.BLUETOOTH_ADMIN"
+    android:maxSdkVersion="30" />
+
+<!-- These 2 bellow, only if you are targeting Android 12+ -->
+<uses-permission android:name="android.permission.BLUETOOTH_CONNECT"
+    tools:targetApi="s" />
+<uses-permission
+    android:name="android.permission.BLUETOOTH_SCAN"
+    android:usesPermissionFlags="neverForLocation"
+    tools:targetApi="s" />
+
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+<!-- These 2 bellow, only if you are targeting Android 10+ -->
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+<uses-feature android:name="android.hardware.bluetooth_le" android:required="true"/>
+<uses-feature android:name="android.hardware.bluetooth" android:required="true"/>
+```
+
+And you are ready to go!
 
 ---
 
@@ -168,7 +216,7 @@ But also you can let it encode and decode your strings automatically.
 
 Take for instance [Issue 183108](https://code.google.com/p/android/issues/detail?id=183108) where Lollipop devices will not work properly without a workaround to handle the connection.
 
-Or the well-known [BLE 133](https://github.com/android/connectivity-samples/issues/18) error! The nightmare of everyone that already worked with BLE on Android, this library has a compilation of tecniches being used to get around it
+Or the well-known [BLE 133](https://github.com/android/connectivity-samples/issues/18) error! The nightmare of everyone that already worked with BLE on Android, this library has a compilation of techniques being used to get around it
 
 
 ## Usage
@@ -182,21 +230,21 @@ If you already know the device you wanna connect to, you could use this:
 Asynchronous:
 ```kotlin
 ble.scanForAsync(
-	// You only need to supply one of these, no need for all of them!
-       macAddress = "00:00:00:00",
-       name = "ESP32",
-       service = "00000000-0000-0000-0000-000000000000",
-       onFinish = { connection ->
-		if (connection != null) {
-			// And you can continue with your code
-	        it.write("00000000-0000-0000-0000-000000000000", "Testing")
-		} else {
-			// Show an Alert or UI with your preferred error message about the device not being available
-		}
-	},
+    // You only need to supply one of these, no need for all of them!
+    macAddress = "00:00:00:00",
+    name = "ESP32",
+    service = "00000000-0000-0000-0000-000000000000",
+    onFinish = { connection ->
+        if (connection != null) {
+            // And you can continue with your code
+            it.write("00000000-0000-0000-0000-000000000000", "Testing")
+        } else {
+            // Show an Alert or UI with your preferred error message about the device not being available
+        }
+    },
        onError = { errorCode ->
-		 // Show an Alert or UI with your preferred error message about the error
-	}
+         // Show an Alert or UI with your preferred error message about the error
+    }
 )
 
 // It is important to keep in mind that every single one of the provided arguments of the function shown above, are optionals! Therefore, you can skip the ones that you don't need.
@@ -282,6 +330,43 @@ ble.connect(device)?.let { connection ->
     val value = connection.read("00000000-0000-0000-0000-000000000000")
     connection.write("00000000-0000-0000-0000-000000000000", "0")
     connection.close()
+}
+```
+
+### Observing changes
+
+There are two ways to observe changes, the first is using the native BLE NOTIFY, which is the preferred option.
+
+```kotlin
+// If you want to make use of the NOTIFY functionality
+ble.connect(device)?.let { connection ->
+
+    // For watching bytes
+    connection.observe(characteristic = "00000000-0000-0000-0000-000000000000") { value: ByteArray ->
+        // This will run everytime the characteristic changes it's value
+    }
+
+    // For watching strings
+    connection.observeString(characteristic = "00000000-0000-0000-0000-000000000000", charset = Charsets.UTF_8) { value: String ->
+        // This will run everytime the characteristic changes it's value
+    }
+}
+
+```
+
+The second way is to manually read the characteristic in a fixed interval and compare with the last value. Which uses more battery, isn't as effective and should only be used when the characteristic doesn't provide the NOTIFY property.
+Fortunately the library handles both ways in a similar API.
+
+```kotlin
+// If you want to use NOTIFY when available and fallback to the legacy way when it isn't
+ble.connect(device)?.let { connection ->
+    connection.observe(
+        characteristic = "00000000-0000-0000-0000-000000000000",
+        owner = viewLifeCycleOwner, // The Lifecycle Owner to attach to
+        interval = 1000L // The interval in ms (in this example 1 second)
+    ) { value: ByteArray ->
+        // This will run everytime the characteristic changes it's value
+    }
 }
 ```
 

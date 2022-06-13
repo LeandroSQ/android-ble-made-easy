@@ -1,11 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="quevedo.soares.leandro.androideasyble">
+	xmlns:tools="http://schemas.android.com/tools"
+	package="quevedo.soares.leandro.blemadeeasy">
 
-	<uses-permission android:name="android.permission.BLUETOOTH"/>
-	<uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
+	<!-- Legacy permissions -->
+	<uses-permission
+		android:name="android.permission.BLUETOOTH"
+		android:maxSdkVersion="30" />
+	<uses-permission
+		android:name="android.permission.BLUETOOTH_ADMIN"
+		android:maxSdkVersion="30" />
 
+	<!-- Android 12 -->
+	<uses-permission android:name="android.permission.BLUETOOTH_CONNECT"
+		tools:targetApi="s" />
+	<uses-permission
+		android:name="android.permission.BLUETOOTH_SCAN"
+		android:usesPermissionFlags="neverForLocation"
+		tools:targetApi="s" />
+
+	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+	<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
 	<uses-feature android:name="android.hardware.bluetooth_le" android:required="true"/>
 	<uses-feature android:name="android.hardware.bluetooth" android:required="true"/>
@@ -16,14 +32,16 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.AndroidEasyBLE">
-        <activity android:name=".view.MainActivity">
+        android:theme="@style/Theme.BLEMadeEasy">
+
+        <activity android:name=".view.MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
     </application>
 
 </manifest>
