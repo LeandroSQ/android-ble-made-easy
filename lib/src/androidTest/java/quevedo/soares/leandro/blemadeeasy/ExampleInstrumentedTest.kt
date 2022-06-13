@@ -19,6 +19,6 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("quevedo.soares.leandro.androideasyble.test", appContext.packageName)
+        assertEquals("quevedo.soares.leandro.blemadeeasy.test", appContext.packageName)
     }
 }
