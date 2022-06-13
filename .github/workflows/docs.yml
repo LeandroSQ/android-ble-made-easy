@@ -44,4 +44,4 @@ jobs:
           folder: docs
 
       - name: Git Push changes
-      - uses: stefanzweifel/git-auto-commit-action@v4
+        uses: stefanzweifel/git-auto-commit-action@v4
