@@ -82,11 +82,14 @@ And you are ready to go!
 
 ### Lifecycle
 
-The library accepts being used both in an Activity and a Fragment!
+This library accepts being used in Jetpack Compose Activities, AppCompat Activities and Fragments!
 
 ```kotlin
+// For jetpack compose:
+val ble = BLE(componentActivity = this)
+// For activities:
 val ble = BLE(activity = this)
-// or
+// For fragments
 val ble = BLE(fragment = this)
 ```
 
