@@ -17,6 +17,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.ParcelUuid
 import android.util.Log
+import androidx.activity.ComponentActivity
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -49,11 +50,12 @@ internal const val GATT_133_TIMEOUT = 600L
 class BLE {
 
 	/* Context related variables */
+	private var componentActivity: ComponentActivity? = null
 	private var activity: AppCompatActivity? = null
 	private var fragment: Fragment? = null
 	private var context: Context
 
-	private val coroutineScope: CoroutineScope get() = activity?.lifecycleScope ?: fragment?.lifecycleScope ?: GlobalScope
+	private val coroutineScope: CoroutineScope get() = componentActivity?.lifecycleScope ?: activity?.lifecycleScope ?: fragment?.lifecycleScope ?: GlobalScope
 
 	/* Bluetooth related variables */
 	private var manager: BluetoothManager? = null
@@ -98,6 +100,17 @@ class BLE {
 	 *
 	 * @throws HardwareNotPresentException If no hardware is present on the running device
 	 **/
+	constructor(componentActivity: ComponentActivity) {
+		this.log("Setting up on an Activity!")
+		this.componentActivity = componentActivity
+		this.context = componentActivity
+		this.setup()
+	}
+	/**
+	 * Instantiates a new Bluetooth scanner instance
+	 *
+	 * @throws HardwareNotPresentException If no hardware is present on the running device
+	 **/
 	constructor(activity: AppCompatActivity) {
 		this.log("Setting up on an Activity!")
 		this.activity = activity
@@ -129,9 +142,9 @@ class BLE {
 
 	// region Contracts related methods
 	private fun registerContracts() {
-		this.adapterContract = ContractHandler(BluetoothAdapterContract(), this.activity, this.fragment)
-		this.permissionContract = ContractHandler(RequestMultiplePermissions(), this.activity, this.fragment)
-		this.locationContract = ContractHandler(ActivityResultContracts.StartIntentSenderForResult(), this.activity, this.fragment)
+		this.adapterContract = ContractHandler(BluetoothAdapterContract(), this.componentActivity, this.activity, this.fragment)
+		this.permissionContract = ContractHandler(RequestMultiplePermissions(), this.componentActivity, this.activity, this.fragment)
+		this.locationContract = ContractHandler(ActivityResultContracts.StartIntentSenderForResult(), this.componentActivity, this.activity, this.fragment)
 	}
 
 	private fun launchPermissionRequestContract(callback: PermissionRequestCallback) {
@@ -187,7 +200,7 @@ class BLE {
 			this.log("All permissions granted!")
 			callback?.invoke(true)
 		} else {
-			if (PermissionUtils.isPermissionRationaleNeeded(this.activity ?: this.fragment?.requireActivity()!!) && rationaleRequestCallback != null) {
+			if (PermissionUtils.isPermissionRationaleNeeded(this.componentActivity ?: this.activity ?: this.fragment?.requireActivity()!!) && rationaleRequestCallback != null) {
 				this.log("Permissions denied, requesting permission rationale callback...")
 				rationaleRequestCallback {
 					launchPermissionRequestContract { granted ->
