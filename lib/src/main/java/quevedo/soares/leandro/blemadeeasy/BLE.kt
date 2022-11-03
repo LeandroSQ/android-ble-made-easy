@@ -50,12 +50,16 @@ internal const val GATT_133_TIMEOUT = 600L
 class BLE {
 
 	/* Context related variables */
+	/** For Jetpack Compose activities use*/
 	private var componentActivity: ComponentActivity? = null
-	private var activity: AppCompatActivity? = null
+	/** For regular activities use */
+	private var appCompatActivity: AppCompatActivity? = null
+	/** For Fragment use */
 	private var fragment: Fragment? = null
+	/** The provided context, based on [componentActivity], [appCompatActivity] or [fragment] */
 	private var context: Context
-
-	private val coroutineScope: CoroutineScope get() = componentActivity?.lifecycleScope ?: activity?.lifecycleScope ?: fragment?.lifecycleScope ?: GlobalScope
+	/** Coroutine scope based on the given context provider [componentActivity], [appCompatActivity] or [fragment] */
+	private val coroutineScope: CoroutineScope get() = componentActivity?.lifecycleScope ?: appCompatActivity?.lifecycleScope ?: fragment?.lifecycleScope ?: GlobalScope
 
 	/* Bluetooth related variables */
 	private var manager: BluetoothManager? = null
@@ -69,18 +73,18 @@ class BLE {
 
 	/* Scan related variables */
 	private val defaultScanSettings by lazy {
-		val builder = ScanSettings.Builder()
-			.setScanMode(ScanSettings.SCAN_MODE_BALANCED)
+		ScanSettings.Builder().apply {
+			setScanMode(ScanSettings.SCAN_MODE_BALANCED)
 
-		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S)
-			builder.setReportDelay(GATT_133_TIMEOUT)
+			if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+				setReportDelay(GATT_133_TIMEOUT)
+			}
 
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
-			builder.setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
-				.setNumOfMatches(ScanSettings.MATCH_NUM_ONE_ADVERTISEMENT)
-
-
-		builder.build()
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+				setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
+				setNumOfMatches(ScanSettings.MATCH_NUM_ONE_ADVERTISEMENT)
+			}
+		}.build()
 	}
 	private var scanCallbackInstance: ScanCallback? = null
 	private var scanReceiverInstance: BroadcastReceiver? = null
@@ -97,23 +101,25 @@ class BLE {
 	// region Constructors
 	/**
 	 * Instantiates a new Bluetooth scanner instance
+	 * Support for Jetpack Compose
 	 *
 	 * @throws HardwareNotPresentException If no hardware is present on the running device
 	 **/
 	constructor(componentActivity: ComponentActivity) {
-		this.log("Setting up on an Activity!")
+		this.log("Setting up on a ComponentActivity!")
 		this.componentActivity = componentActivity
 		this.context = componentActivity
 		this.setup()
 	}
+
 	/**
 	 * Instantiates a new Bluetooth scanner instance
 	 *
 	 * @throws HardwareNotPresentException If no hardware is present on the running device
 	 **/
 	constructor(activity: AppCompatActivity) {
-		this.log("Setting up on an Activity!")
-		this.activity = activity
+		this.log("Setting up on an AppCompatActivity!")
+		this.appCompatActivity = activity
 		this.context = activity
 		this.setup()
 	}
@@ -133,18 +139,17 @@ class BLE {
 	private fun setup() {
 		this.verifyBluetoothHardwareFeature()
 		this.registerContracts()
-
-		this.manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-		this.adapter = this.manager?.adapter
-		this.scanner = this.adapter?.bluetoothLeScanner
+		this.setupBluetoothService()
 	}
 	// endregion
 
 	// region Contracts related methods
 	private fun registerContracts() {
-		this.adapterContract = ContractHandler(BluetoothAdapterContract(), this.componentActivity, this.activity, this.fragment)
-		this.permissionContract = ContractHandler(RequestMultiplePermissions(), this.componentActivity, this.activity, this.fragment)
-		this.locationContract = ContractHandler(ActivityResultContracts.StartIntentSenderForResult(), this.componentActivity, this.activity, this.fragment)
+		this.log("Registering contracts...")
+
+		this.adapterContract = ContractHandler(BluetoothAdapterContract(), this.componentActivity, this.appCompatActivity, this.fragment)
+		this.permissionContract = ContractHandler(RequestMultiplePermissions(), this.componentActivity, this.appCompatActivity, this.fragment)
+		this.locationContract = ContractHandler(ActivityResultContracts.StartIntentSenderForResult(), this.componentActivity, this.appCompatActivity, this.fragment)
 	}
 
 	private fun launchPermissionRequestContract(callback: PermissionRequestCallback) {
@@ -179,6 +184,13 @@ class BLE {
 			}
 		}
 	}
+
+	private fun setupBluetoothService() {
+		this.log("Setting up bluetooth service...")
+		this.manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+		this.adapter = this.manager?.adapter
+		this.scanner = this.adapter?.bluetoothLeScanner
+	}
 	// endregion
 
 	// region Permission related methods
@@ -200,7 +212,9 @@ class BLE {
 			this.log("All permissions granted!")
 			callback?.invoke(true)
 		} else {
-			if (PermissionUtils.isPermissionRationaleNeeded(this.componentActivity ?: this.activity ?: this.fragment?.requireActivity()!!) && rationaleRequestCallback != null) {
+			// Fetch an Activity from the given context providers
+			val providedActivity = this.componentActivity ?: this.appCompatActivity ?: this.fragment?.requireActivity()!!
+			if (PermissionUtils.isPermissionRationaleNeeded(providedActivity) && rationaleRequestCallback != null) {
 				this.log("Permissions denied, requesting permission rationale callback...")
 				rationaleRequestCallback {
 					launchPermissionRequestContract { granted ->
@@ -382,7 +396,7 @@ class BLE {
 
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 			// region Android 10 callback
-			scanReceiverInstance = object: BroadcastReceiver() {
+			scanReceiverInstance = object : BroadcastReceiver() {
 				override fun onReceive(context: Context?, intent: Intent?) {
 					// Ignore other events
 					if (intent == null) return
@@ -460,7 +474,15 @@ class BLE {
 	 **/
 	@SuppressLint("InlinedApi")
 	@RequiresPermission(anyOf = [permission.BLUETOOTH_ADMIN, permission.BLUETOOTH_SCAN])
-	fun scanAsync(filters: List<ScanFilter>? = null, settings: ScanSettings? = null, duration: Long = DEFAULT_TIMEOUT, onFinish: Callback<Array<BLEDevice>>? = null, onDiscover: Callback<BLEDevice>? = null, onUpdate: Callback<List<BLEDevice>>? = null, onError: Callback<Int>? = null ) {
+	fun scanAsync(
+		filters: List<ScanFilter>? = null,
+		settings: ScanSettings? = null,
+		duration: Long = DEFAULT_TIMEOUT,
+		onFinish: Callback<Array<BLEDevice>>? = null,
+		onDiscover: Callback<BLEDevice>? = null,
+		onUpdate: Callback<List<BLEDevice>>? = null,
+		onError: Callback<Int>? = null
+	) {
 		this.coroutineScope.launch {
 			log("Starting scan...")
 

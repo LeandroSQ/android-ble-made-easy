@@ -311,7 +311,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 
 			// While the lifecycle owner is not destroyed and the observer is in the activeObservers
 			val key = characteristic.uuid.toString().lowercase()
-			while(owner.lifecycle.currentState != Lifecycle.State.DESTROYED && activeObservers.containsKey(key)) {
+			while (owner.lifecycle.currentState != Lifecycle.State.DESTROYED && activeObservers.containsKey(key)) {
 				// Saves the start time
 				val startTime = System.currentTimeMillis()
 
