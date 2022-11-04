@@ -74,10 +74,11 @@ class BLE {
 	/* Scan related variables */
 	private val defaultScanSettings by lazy {
 		ScanSettings.Builder().apply {
-			setScanMode(ScanSettings.SCAN_MODE_BALANCED)
-
-			if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-				setReportDelay(GATT_133_TIMEOUT)
+			if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
+				log("[Legacy] ScanSettings: Using aggressive mode")
+				setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+				setMatchMode(ScanSettings.MATCH_MODE_AGGRESSIVE)
+				setReportDelay(0L)
 			}
 
 			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -543,6 +544,9 @@ class BLE {
 	@SuppressLint("InlinedApi")
 	@RequiresPermission(anyOf = [permission.BLUETOOTH_ADMIN, permission.BLUETOOTH_SCAN])
 	suspend fun scan(filters: List<ScanFilter>? = null, settings: ScanSettings? = null, duration: Long = DEFAULT_TIMEOUT): Array<BLEDevice> {
+
+		scan(filters = null, settings = ScanSettings.Builder().build())
+
 		return suspendCancellableCoroutine { continuation ->
 			this.coroutineScope.launch {
 				// Validates the duration
@@ -732,6 +736,7 @@ class BLE {
 
 		// Legacy
 		this.scanCallbackInstance?.let {
+			this.scanner?.flushPendingScanResults(scanCallbackInstance)
 			this.scanner?.stopScan(it)
 			this.scanCallbackInstance = null
 		}
@@ -763,7 +768,14 @@ class BLE {
 	@RequiresPermission(permission.BLUETOOTH_CONNECT)
 	suspend fun connect(device: BluetoothDevice): BluetoothConnection? {
 		return suspendCancellableCoroutine { continuation ->
-			this.log("Trying to establish a conecttion with device ${device.address}...")
+			this.log("Trying to establish a connection with device ${device.address}...")
+
+			if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.M) {
+				this.log("[Legacy] Waiting ${GATT_133_TIMEOUT}ms before connecting, to prevent GATT_133")
+				runBlocking {
+					delay(GATT_133_TIMEOUT)
+				}
+			}
 
 			// Establishes a bluetooth connection to the specified device
 			BluetoothConnection(device).also {
