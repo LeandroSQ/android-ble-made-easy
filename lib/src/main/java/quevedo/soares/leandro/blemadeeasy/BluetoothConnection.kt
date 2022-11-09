@@ -449,7 +449,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 		}
 
 		// HACK: Android M+ requires a transport LE in order to skip the 133 of death status when connecting
-		this.genericAttributeProfile = if (VERSION.SDK_INT > VERSION_CODES.M)
+		this.genericAttributeProfile = if (VERSION.SDK_INT >= VERSION_CODES.M)
 			this.device.connectGatt(context, true, setupGattCallback(), BluetoothDevice.TRANSPORT_LE)
 		else
 			this.device.connectGatt(context, false, setupGattCallback())
