@@ -39,7 +39,7 @@ allprojects {
 dependencies {
     ...
 
-    implementation 'com.github.LeandroSQ:android-ble-made-easy:1.7.0'
+    implementation 'com.github.LeandroSQ:android-ble-made-easy:1.8.0'
 
     ...
 }
