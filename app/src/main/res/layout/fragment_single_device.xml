@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
-	xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
 	xmlns:tools="http://schemas.android.com/tools"
 	android:layout_width="match_parent"
@@ -19,53 +18,67 @@
 		app:layout_constraintTop_toTopOf="parent"
 		tools:text="Current status: Connecting..." />
 
-	<com.google.android.material.button.MaterialButton
-		android:id="@+id/fsd_btn_toggle"
-		android:layout_width="0dp"
-		android:layout_height="wrap_content"
-		android:enabled="false"
-		android:layout_marginBottom="15dp"
-		android:backgroundTint="@color/purple_200"
-		android:text="@string/fragment_single_device_toggle_btn"
-		app:layout_constraintBottom_toTopOf="@id/fsd_btn_disconnect"
-		app:layout_constraintEnd_toEndOf="@id/fsd_btn_disconnect"
-		app:layout_constraintStart_toStartOf="@id/fsd_btn_disconnect" />
-
-	<com.google.android.material.button.MaterialButton
-		android:id="@+id/fsd_btn_disconnect"
+	<LinearLayout
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
-		android:enabled="false"
-		android:backgroundTint="#F44336"
-		android:text="@string/fragment_single_device_disconnect_btn"
+		android:orientation="vertical"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintEnd_toEndOf="parent"
 		app:layout_constraintStart_toStartOf="parent"
-		app:layout_constraintTop_toTopOf="parent"
-		tools:visibility="visible" />
+		app:layout_constraintTop_toBottomOf="@id/fsd_current_status">
 
-	<com.google.android.material.button.MaterialButton
-		android:id="@+id/fsd_btn_observe"
-		android:layout_width="0dp"
-		android:layout_height="wrap_content"
-		android:enabled="false"
-		android:layout_marginTop="15dp"
-		android:backgroundTint="@color/orange_700"
-		android:text="@string/fragment_single_device_observe_off_btn"
-		app:layout_constraintTop_toBottomOf="@id/fsd_btn_disconnect"
-		app:layout_constraintEnd_toEndOf="@id/fsd_btn_disconnect"
-		app:layout_constraintStart_toStartOf="@id/fsd_btn_disconnect" />
+		<com.google.android.material.button.MaterialButton
+			android:id="@+id/fsd_btn_toggle"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginBottom="16dp"
+			android:backgroundTint="@color/purple_200"
+			android:minWidth="175dp"
+			android:text="@string/fragment_single_device_toggle_btn"
+			android:visibility="gone"
+			tools:visibility="visible" />
 
-	<com.google.android.material.button.MaterialButton
-		android:id="@+id/fsd_btn_connect"
-		android:layout_width="0dp"
-		android:layout_height="wrap_content"
-		android:layout_marginTop="15dp"
-		android:backgroundTint="#4CAF50"
-		android:text="@string/fragment_single_device_connect_btn"
-		app:layout_constraintEnd_toEndOf="@id/fsd_btn_observe"
-		app:layout_constraintStart_toStartOf="@id/fsd_btn_observe"
-		app:layout_constraintTop_toBottomOf="@+id/fsd_btn_observe" />
+		<com.google.android.material.button.MaterialButton
+			android:id="@+id/fsd_btn_observe"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginBottom="16dp"
+			android:backgroundTint="@color/blue_700"
+			android:minWidth="175dp"
+			android:text="@string/fragment_single_device_observe_off_btn"
+			android:visibility="gone"
+			tools:visibility="visible" />
+
+		<com.google.android.material.button.MaterialButton
+			android:id="@+id/fsd_btn_read"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginBottom="16dp"
+			android:backgroundTint="@color/teal_700"
+			android:minWidth="175dp"
+			android:text="@string/fragment_single_device_read_btn"
+			android:visibility="gone"
+			tools:visibility="visible" />
+
+		<com.google.android.material.button.MaterialButton
+			android:id="@+id/fsd_btn_disconnect"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginBottom="16dp"
+			android:backgroundTint="#F44336"
+			android:minWidth="175dp"
+			android:text="@string/fragment_single_device_disconnect_btn"
+			android:visibility="gone"
+			tools:visibility="visible" />
+
+		<com.google.android.material.button.MaterialButton
+			android:id="@+id/fsd_btn_connect"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:backgroundTint="#4CAF50"
+			android:minWidth="175dp"
+			android:text="@string/fragment_single_device_connect_btn" />
+	</LinearLayout>
 
 	<androidx.constraintlayout.widget.ConstraintLayout
 		android:id="@+id/fsd_cl_loader"
@@ -74,6 +87,7 @@
 		android:alpha="0.75"
 		android:background="@color/black"
 		android:elevation="10dp"
+		android:visibility="visible"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintEnd_toEndOf="parent"
 		app:layout_constraintStart_toStartOf="parent"
@@ -81,6 +95,7 @@
 		tools:visibility="gone">
 
 		<ProgressBar
+			android:id="@+id/fsd_pb_progress"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:indeterminate="true"
@@ -89,6 +104,17 @@
 			app:layout_constraintEnd_toEndOf="parent"
 			app:layout_constraintStart_toStartOf="parent"
 			app:layout_constraintTop_toTopOf="parent" />
+
+		<TextView
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="10dp"
+			android:text="@string/fragment_single_device_loading_lbl"
+			android:textColor="@color/white"
+			android:textStyle="bold"
+			app:layout_constraintEnd_toEndOf="@id/fsd_pb_progress"
+			app:layout_constraintStart_toStartOf="@id/fsd_pb_progress"
+			app:layout_constraintTop_toBottomOf="@id/fsd_pb_progress" />
 
 	</androidx.constraintlayout.widget.ConstraintLayout>
 
