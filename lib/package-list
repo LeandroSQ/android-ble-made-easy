@@ -78,6 +78,8 @@ $dokka.location:quevedo.soares.leandro.blemadeeasy/BluetoothConnection/onConnect
 $dokka.location:quevedo.soares.leandro.blemadeeasy/BluetoothConnection/onDisconnect/#/PointingToDeclaration/lib/quevedo.soares.leandro.blemadeeasy/-bluetooth-connection/on-disconnect.html
 $dokka.location:quevedo.soares.leandro.blemadeeasy/BluetoothConnection/read/#kotlin.String#java.nio.charset.Charset/PointingToDeclaration/lib/quevedo.soares.leandro.blemadeeasy/-bluetooth-connection/read.html
 $dokka.location:quevedo.soares.leandro.blemadeeasy/BluetoothConnection/read/#kotlin.String/PointingToDeclaration/lib/quevedo.soares.leandro.blemadeeasy/-bluetooth-connection/read.html
+$dokka.location:quevedo.soares.leandro.blemadeeasy/BluetoothConnection/readAsync/#kotlin.String#java.nio.charset.Charset#kotlin.Function1[kotlin.String?,kotlin.Unit]/PointingToDeclaration/lib/quevedo.soares.leandro.blemadeeasy/-bluetooth-connection/read-async.html
+$dokka.location:quevedo.soares.leandro.blemadeeasy/BluetoothConnection/readAsync/#kotlin.String#kotlin.Function1[kotlin.ByteArray?,kotlin.Unit]/PointingToDeclaration/lib/quevedo.soares.leandro.blemadeeasy/-bluetooth-connection/read-async.html
 $dokka.location:quevedo.soares.leandro.blemadeeasy/BluetoothConnection/readableCharacteristics/#/PointingToDeclaration/lib/quevedo.soares.leandro.blemadeeasy/-bluetooth-connection/readable-characteristics.html
 $dokka.location:quevedo.soares.leandro.blemadeeasy/BluetoothConnection/rsii/#/PointingToDeclaration/lib/quevedo.soares.leandro.blemadeeasy/-bluetooth-connection/rsii.html
 $dokka.location:quevedo.soares.leandro.blemadeeasy/BluetoothConnection/services/#/PointingToDeclaration/lib/quevedo.soares.leandro.blemadeeasy/-bluetooth-connection/services.html
