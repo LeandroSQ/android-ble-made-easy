@@ -58,11 +58,7 @@ class ScanDevicesFragment : Fragment() {
 
 		// Initialize the adapter
 		this.adapter = BLEDeviceAdapter(this.binding.fmdRvItems, this::onItemSelected)
-	}
-
-	override fun onStart() {
-		super.onStart()
-
+		
 		if (this.ble?.isScanRunning != true) requestPermissions()
 	}
 	// endregion
