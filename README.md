@@ -325,7 +325,6 @@ ble.stopScan()
 ```
 
 ### Manually connecting to a discovered device
-
 After a successful scan, you'll have your Bluetooth device, now it is time to connect with it!
 ```kotlin
 ble.connect(device)?.let { connection ->
@@ -333,6 +332,45 @@ ble.connect(device)?.let { connection ->
     val value = connection.read("00000000-0000-0000-0000-000000000000")
     connection.write("00000000-0000-0000-0000-000000000000", "0")
     connection.close()
+}
+```
+
+### Writing to a device
+
+After a successful scan, you'll have your Bluetooth device
+```kotlin
+ble.connect(device)?.let { connection ->
+connection.write(characteristic = "00000000-0000-0000-0000-000000000000", message = "Hello World", charset = Charsets.UTF_8)
+connection.close()
+}
+```
+
+### Reading from a device
+
+After a successful scan, you'll have your Bluetooth device
+There's a catch, reading cannot be done on synchronously, so just like other methods you will have two options read and readAsync
+```kotlin
+GlobalScope.launch {
+    ble.connect(device)?.let { connection ->
+        val value = connection.read(characteristic = "00000000-0000-0000-0000-000000000000")
+        if (value != null) {
+            // Do something with this value
+        } else {
+            // Show an Alert or UI with your preferred error message
+        }
+    }
+}
+```
+Or you could use the read method with the 'async' prefix, providing a callback
+```kotlin
+ble.connect(device)?.let { connection ->
+    connection.readAsync(characteristic = "00000000-0000-0000-0000-000000000000") { value
+        if (value != null) {
+            // Do something with this value
+        } else {
+            // Show an Alert or UI with your preferred error message
+        }
+    }
 }
 ```
 

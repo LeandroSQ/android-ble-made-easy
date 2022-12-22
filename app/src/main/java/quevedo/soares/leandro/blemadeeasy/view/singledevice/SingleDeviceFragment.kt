@@ -42,8 +42,7 @@ class SingleDeviceFragment : Fragment() {
 
 	/* Misc */
 	private var command = false
-	private var observerId: String? = null
-	private val isObserving get() = observerId != null
+	private var isObserving: Boolean = false
 
 	// region Fragment creation related methods
 	override fun onCreate(savedInstanceState: Bundle?) {
@@ -95,12 +94,12 @@ class SingleDeviceFragment : Fragment() {
 
 	private fun setDeviceConnectionStatus(isConnected: Boolean) {
 		binding.root.post {
-			binding.fsdBtnToggle.isEnabled = isConnected
-			binding.fsdBtnDisconnect.isEnabled = isConnected
-			binding.fsdBtnObserve.isEnabled = isConnected
-			binding.fsdBtnConnect.isEnabled = !isConnected
+			binding.fsdBtnToggle.isVisible = isConnected
+			binding.fsdBtnRead.isVisible = isConnected
+			binding.fsdBtnDisconnect.isVisible = isConnected
+			binding.fsdBtnObserve.isVisible = isConnected
+			binding.fsdBtnConnect.isVisible = !isConnected
 		}
-
 	}
 
 	@SuppressLint("MissingPermission")
@@ -145,9 +144,10 @@ class SingleDeviceFragment : Fragment() {
 	private fun setupBinding() {
 		binding.apply {
 			// Set the on click listeners
+			fsdBtnRead.setOnClickListener { onButtonReadClick() }
 			fsdBtnToggle.setOnClickListener { onButtonToggleClick() }
-			fsdBtnConnect.setOnClickListener { onButtonConnectClick() }
 			fsdBtnObserve.setOnClickListener { onButtonObserveClick() }
+			fsdBtnConnect.setOnClickListener { onButtonConnectClick() }
 			fsdBtnDisconnect.setOnClickListener { onButtonDisconnectClick() }
 		}
 	}
@@ -213,15 +213,47 @@ class SingleDeviceFragment : Fragment() {
 
 	private fun onButtonObserveClick() {
 		this.connection?.let {
-			it.readableCharacteristics.forEach { characteristic ->
-				if (isObserving) {
-					this.binding.fsdBtnObserve.setText(R.string.fragment_single_device_observe_on_btn)
-					it.stopObserving(characteristic)
+			// If the desired characteristic is not available to be observed, pick the first available one
+			// This is not really needed, it is just that this would be nice to have for when using generic BLE devices with this sample app
+			var candidates = it.notifiableCharacteristics
+			if (candidates.isEmpty()) candidates = it.readableCharacteristics
+			if (candidates.contains(deviceCharacteristic)) candidates = arrayListOf(deviceCharacteristic)
+			val characteristic = candidates.first()
+
+			// Observe
+			if (isObserving) {
+				it.stopObserving(characteristic)
+			} else {
+				it.observeString(characteristic, owner = this.viewLifecycleOwner, interval = 5000L) { new ->
+					showToast("Value changed to $new")
+				}
+			}
+
+			// Update the UI
+			this.binding.fsdBtnObserve.setText(if (isObserving) R.string.fragment_single_device_observe_off_btn else R.string.fragment_single_device_observe_on_btn)
+			this.isObserving = !isObserving
+		}
+	}
+
+	private fun onButtonReadClick() {
+		lifecycleScope.launch {
+			// Update variables
+			updateStatus(true, "Requesting read...")
+
+			// If the desired characteristic is not available to be read, pick the first available one
+			// This is not really needed, it is just that this would be nice to have for when using generic BLE devices with this sample app
+			val characteristic = connection?.readableCharacteristics?.firstOrNull { it == deviceCharacteristic } ?: connection?.readableCharacteristics?.first()
+			if (characteristic.isNullOrEmpty()) {
+				updateStatus(false, "No valid characteristics...")
+				return@launch
+			}
+
+			connection?.read(characteristic, Charsets.UTF_8)?.let { response ->
+				if (response.isEmpty()) {
+					updateStatus(false, "Error while reading")
 				} else {
-					this.binding.fsdBtnObserve.setText(R.string.fragment_single_device_observe_off_btn)
-					it.observeString(characteristic, owner = this.viewLifecycleOwner, interval = 1000L) { new ->
-						showToast("Value changed to $new")
-					}
+					showToast("Read value: $response")
+					updateStatus(false, "Read successful")
 				}
 			}
 		}

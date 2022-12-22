@@ -764,7 +764,6 @@ class BLE {
 	 *
 	 * @return A nullable [BluetoothConnection], null when not successful
 	 **/
-	@SuppressLint("InlinedApi")
 	@RequiresPermission(permission.BLUETOOTH_CONNECT)
 	suspend fun connect(device: BluetoothDevice): BluetoothConnection? {
 		return suspendCancellableCoroutine { continuation ->

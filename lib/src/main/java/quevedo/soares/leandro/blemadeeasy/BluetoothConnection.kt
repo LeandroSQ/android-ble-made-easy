@@ -8,9 +8,7 @@ import android.os.Build.VERSION_CODES
 import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import quevedo.soares.leandro.blemadeeasy.exceptions.ConnectionClosingException
 import quevedo.soares.leandro.blemadeeasy.models.BluetoothCharacteristic
 import quevedo.soares.leandro.blemadeeasy.models.BluetoothService
@@ -19,8 +17,10 @@ import quevedo.soares.leandro.blemadeeasy.typealiases.EmptyCallback
 import java.nio.charset.Charset
 import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.coroutines.resume
 
 typealias OnCharacteristicValueChangeCallback<T> = (new: T) -> Unit
+typealias OnCharacteristicValueReadCallback<T> = (new: T?) -> Unit
 
 @Suppress("unused")
 class BluetoothConnection internal constructor(private val device: BluetoothDevice) {
@@ -36,6 +36,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	/* Misc */
 	private var operationsInQueue: AtomicInteger = AtomicInteger(0)
 	private var activeObservers = hashMapOf<String, OnCharacteristicValueChangeCallback<ByteArray>>()
+	private var enqueuedReadCallbacks = hashMapOf<String, OnCharacteristicValueReadCallback<ByteArray>>()
 
 	internal var coroutineScope: CoroutineScope? = null
 
@@ -179,6 +180,26 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 				}
 			}
 
+			override fun onCharacteristicRead(gatt: BluetoothGatt?, characteristic: BluetoothGattCharacteristic?, status: Int) {
+				super.onCharacteristicRead(gatt, characteristic, status)
+				if (characteristic == null) return
+
+				val key = characteristic.uuid.toString().lowercase()
+				var value: ByteArray? = null
+
+				if (status == BluetoothGatt.GATT_SUCCESS) {
+					log("onCharacteristicRead: '${characteristic.uuid}' read '$key'")
+					value = characteristic.value
+				} else {
+					error("onCharacteristicRead: Error while reading '$key' status: $status")
+				}
+
+				// Invoke callback and remove it from the queue
+				coroutineScope?.launch {
+					enqueuedReadCallbacks[key]?.invoke(value)
+					enqueuedReadCallbacks.remove(key)
+				}
+			}
 		}
 	}
 
@@ -194,7 +215,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 			}
 		}
 
-		this.error("Characteristic $characteristic not found on device ${device.address}!")
+		error("Characteristic $characteristic not found on device ${device.address}!")
 		return null
 	}
 	// endregion
@@ -265,81 +286,129 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	 * Performs a read operation on a specific characteristic
 	 *
 	 * @see [read] For a variant that returns a [String] value
+	 * @see readAsync For a variation using callbacks
 	 *
 	 * @param characteristic The uuid of the target characteristic
 	 *
 	 * @return A nullable [ByteArray], null when failed to read
 	 **/
-	fun read(characteristic: String): ByteArray? {
-		this.beginOperation()
-
-		// Null safe let of the generic attribute profile
-		genericAttributeProfile?.let { gatt ->
-			// Searches for the characteristic
-			this.getCharacteristic(gatt, characteristic)?.let {
-				// Tries to read its value, if successful return it
-				val value = it.read(gatt)
-				if (value != null) {
-					this.finishOperation()
-					return value
-				} else {
-					error("Failed to read characteristic $characteristic on device ${device.address}")
-				}
+	suspend fun read(characteristic: String): ByteArray? {
+		return suspendCancellableCoroutine { continuation ->
+			readAsync(characteristic) {
+				continuation.resume(it)
 			}
 		}
-
-		this.finishOperation()
-		return null
 	}
 
 	/**
 	 * Performs a read operation on a specific characteristic
 	 *
 	 * @see [read] For a variant that returns a [ByteArray] value
+	 * @see readAsync For a variation using callbacks
 	 *
 	 * @param characteristic The uuid of the target characteristic
+	 * @param charset The charset to decode the received bytes
 	 *
 	 * @return A nullable [String], null when failed to read
 	 **/
-	fun read(characteristic: String, charset: Charset = Charsets.UTF_8): String? = this.read(characteristic)?.let { String(it, charset) }
+	suspend fun read(characteristic: String, charset: Charset = Charsets.UTF_8): String? = this.read(characteristic)?.let { String(it, charset) }
+
+	/**
+	 * Performs a read operation on a specific characteristic
+	 *
+	 * @see [read] For a variant that returns a [String] value
+	 * @see [read] For a variation using coroutines suspended functions
+	 *
+	 * @param characteristic The uuid of the target characteristic
+	 *
+	 * @return A nullable [ByteArray], null when failed to read
+	 **/
+	fun readAsync(characteristic: String, callback: (ByteArray?) -> Unit) {
+		// Check if the characteristic is already in queue to be read, and if so ignore
+		if (this.enqueuedReadCallbacks.containsKey(characteristic)) {
+			error("read: '$characteristic' already waiting for read, ignoring read request.")
+			return callback(null)
+		}
+
+		// Null safe let of the generic attribute profile
+		this.beginOperation()
+		genericAttributeProfile?.let { gatt ->
+			// Searches for the characteristic
+			this.getCharacteristic(gatt, characteristic)?.let {
+				if (!it.read(gatt)) {
+					// The operation was not successful
+					error("read: '$characteristic' error while starting the read request.")
+					this.finishOperation()
+					return callback(null)
+				}
+
+				// Define the callback to resume the coroutine
+				this.enqueuedReadCallbacks[characteristic] = { response ->
+					if (response != null) {
+						callback(response)
+					} else {
+						// The operation was not successful
+						error("read: '$characteristic' error while starting the read request.")
+						callback(null)
+					}
+
+					this.finishOperation()
+				}
+			}
+		}
+	}
+
+	/**
+	 * Performs a read operation on a specific characteristic
+	 *
+	 * @see [read] For a variant that returns a [ByteArray] value
+	 * @see [read] For a variation using coroutines suspended functions
+	 *
+	 * @param characteristic The uuid of the target characteristic
+	 * @param charset The charset to decode the received bytes
+	 *
+	 * @return A nullable [String], null when failed to read
+	 **/
+	fun readAsync(characteristic: String, charset: Charset, callback: (String?) -> Unit) = readAsync(characteristic) { callback(it?.let { String(it, charset) }) }
 	// endregion
 
 	// region Value observation related methods
-	private fun legacyObserve(owner: LifecycleOwner, gatt: BluetoothGatt, characteristic: BluetoothCharacteristic, callback: OnCharacteristicValueChangeCallback<ByteArray>, interval: Long) {
+	private fun legacyObserve(owner: LifecycleOwner, characteristic: BluetoothCharacteristic, callback: OnCharacteristicValueChangeCallback<ByteArray>, interval: Long) {
 		this.coroutineScope?.launch {
 			var lastValue: ByteArray? = null
 
 			// While the lifecycle owner is not destroyed and the observer is in the activeObservers
 			val key = characteristic.uuid.toString().lowercase()
+			var startTime: Long
 			while (owner.lifecycle.currentState != Lifecycle.State.DESTROYED && activeObservers.containsKey(key)) {
-				// Saves the start time
-				val startTime = System.currentTimeMillis()
+				if (!enqueuedReadCallbacks.containsKey(key)) {
+					// Read the characteristic
+					startTime = System.currentTimeMillis()
+					read(key)?.let { currentValue ->
+						log("legacyObserve: [${currentValue.joinToString(", ")}]")
 
-				// Read the characteristic
-				characteristic.read(gatt)?.let { currentValue ->
-					log("legacyObserve: [${currentValue.joinToString(", ")}]")
+						// Check if it has changed
+						if (!currentValue.contentEquals(lastValue)) {
+							// It has, invoke the callback and store the current value
+							if (lastValue != null) {
+								callback.invoke(currentValue)
+								log("legacyObserve: Value changed!")
+							}
 
-					// Check if it has changed
-					if (!currentValue.contentEquals(lastValue)) {
-						// It has, invoke the callback and store the current value
-						if (lastValue != null) {
-							callback.invoke(currentValue)
-							log("legacyObserve: Value changed!")
+							lastValue = currentValue
 						}
 
-						lastValue = currentValue
+						// Calculate the elapsed time and subtract it from the interval time
+						val endTime = System.currentTimeMillis()
+						val elapsedTime = endTime - startTime
+						val sleepTime = (interval - elapsedTime).coerceAtLeast(0L)
+
+						// Updates too close can be harmful to the battery, warn the user
+						if (sleepTime <= 0L) warn("The elapsed time $elapsedTime between reads exceeds the specified interval of ${interval}ms. You should consider increasing the interval!")
+
+						delay(sleepTime)
 					}
 				}
-
-				// Calculate the elapsed time and subtract it from the interval time
-				val endTime = System.currentTimeMillis()
-				val elapsedTime = endTime - startTime
-				val sleepTime = (interval - elapsedTime).coerceAtLeast(0L)
-
-				// Updates too close can be harmful to the battery, warn the user
-				if (sleepTime <= 0L) warn("The elapsed time $elapsedTime between reads exceeds the specified interval of ${interval}ms. You should consider increasing the interval!")
-
-				delay(sleepTime)
 			}
 		}
 	}
@@ -364,7 +433,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 		this.genericAttributeProfile?.let { gatt ->
 			this.getCharacteristic(gatt, characteristic)?.let {
 				if (!it.isNotifiable && it.isReadable && owner != null && coroutineScope != null) {
-					this.legacyObserve(owner, gatt, it, callback, interval)
+					legacyObserve(owner, it, callback, interval)
 				} else {
 					it.enableNotify(gatt)
 				}

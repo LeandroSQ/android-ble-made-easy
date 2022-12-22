@@ -20,9 +20,7 @@ data class BluetoothCharacteristic(
 		return this.characteristic.descriptors.find { it.uuid == c }
 	}
 
-	fun read(gatt: BluetoothGatt) = if (gatt.readCharacteristic(this.characteristic)) {
-		this.characteristic.value
-	} else null
+	fun read(gatt: BluetoothGatt): Boolean = gatt.readCharacteristic(this.characteristic)
 
 	fun write(gatt: BluetoothGatt, value: ByteArray): Boolean {
 		this.characteristic.value = value
