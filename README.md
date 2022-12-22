@@ -364,7 +364,7 @@ GlobalScope.launch {
 Or you could use the read method with the 'async' prefix, providing a callback
 ```kotlin
 ble.connect(device)?.let { connection ->
-    connection.readAsync(characteristic = "00000000-0000-0000-0000-000000000000") { value
+    connection.readAsync(characteristic = "00000000-0000-0000-0000-000000000000") { value ->
         if (value != null) {
             // Do something with this value
         } else {
