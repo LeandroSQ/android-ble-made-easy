@@ -260,6 +260,9 @@ class SingleDeviceFragment : Fragment() {
 					updateStatus(false, "Read successful")
 				}
 			}
+
+			//Read remote connection rssi
+			connection?.readRSSI()
 		}
 	}
 

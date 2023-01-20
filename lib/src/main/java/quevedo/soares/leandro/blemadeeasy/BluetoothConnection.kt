@@ -171,7 +171,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 				// Update the internal rsii variable
 				if (status == BluetoothGatt.GATT_SUCCESS) {
 					log("onReadRemoteRssi: $rssi")
-					this@BluetoothConnection.rsii = rsii
+					this@BluetoothConnection.rsii = rssi
 				}
 			}
 			override fun onMtuChanged(gatt: BluetoothGatt?, mtu: Int, status: Int) {
@@ -316,7 +316,26 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 		}
 		return false
 	}
-	
+
+	/**
+	 * Read device rssi
+	 *
+	 * @return true if successful
+	 **/
+	fun readRSSI(): Boolean {
+		this.genericAttributeProfile?.let { gatt ->
+			// Tries to change MTU
+			val success = gatt.readRemoteRssi()
+			if (success) {
+				log("Read rssi on: ${device.address}")
+				return true
+			} else {
+				log("Could not read rssi on: ${device.address}")
+			}
+		}
+		return false
+	}
+
 	// endregion
 
 	// region Value reading related methods
