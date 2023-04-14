@@ -1,14 +1,18 @@
 package quevedo.soares.leandro.blemadeeasy
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.*
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build.VERSION
 import android.os.Build.VERSION_CODES
 import android.util.Log
+import androidx.core.app.ActivityCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.*
+import quevedo.soares.leandro.blemadeeasy.enums.Priority
 import quevedo.soares.leandro.blemadeeasy.exceptions.ConnectionClosingException
 import quevedo.soares.leandro.blemadeeasy.models.BluetoothCharacteristic
 import quevedo.soares.leandro.blemadeeasy.models.BluetoothService
@@ -29,6 +33,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	private var genericAttributeProfile: BluetoothGatt? = null
 	private var closingConnection: Boolean = false
 	private var connectionActive: Boolean = false
+	private var priority: Priority = Priority.Balanced
 
 	/* Callbacks */
 	private var connectionCallback: Callback<Boolean>? = null
@@ -110,9 +115,9 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 		}.flatten().distinct()
 	}
 
+	@SuppressLint("MissingPermission")
 	private fun setupGattCallback(): BluetoothGattCallback {
 		return object : BluetoothGattCallback() {
-
 			override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
 				super.onConnectionStateChange(gatt, status, newState)
 
@@ -123,6 +128,11 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 					if (!connectionActive) {
 						onConnect?.invoke()
 						connectionActive = true
+					}
+
+					// Requests the connection priority
+					if (gatt?.requestConnectionPriority(priority.toGattEnum()) != true) {
+						log("Could not elevate connection priority to $priority!")
 					}
 
 					// Starts the services discovery
@@ -168,6 +178,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 				}
 			}
 
+			@Deprecated("Deprecated in Java")
 			override fun onCharacteristicChanged(gatt: BluetoothGatt?, characteristic: BluetoothGattCharacteristic?) {
 				super.onCharacteristicChanged(gatt, characteristic)
 				if (characteristic == null) return
@@ -180,6 +191,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 				}
 			}
 
+			@Deprecated("Deprecated in Java")
 			override fun onCharacteristicRead(gatt: BluetoothGatt?, characteristic: BluetoothGattCharacteristic?, status: Int) {
 				super.onCharacteristicRead(gatt, characteristic, status)
 				if (characteristic == null) return
@@ -480,6 +492,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	@SuppressLint("ObsoleteSdkInt")
 	private fun isLollipop() = VERSION.SDK_INT >= VERSION_CODES.LOLLIPOP && VERSION.SDK_INT <= VERSION_CODES.M
 
+	@SuppressLint("MissingPermission")
 	private fun startDisconnection() {
 		try {
 			this.closingConnection = true
@@ -489,6 +502,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 		}
 	}
 
+	@SuppressLint("MissingPermission")
 	private fun endDisconnection() {
 		log("Disconnected succesfully from ${device.address}!\nClosing connection...")
 
@@ -506,7 +520,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	// endregion
 
 	// region Connection handling related methods
-	internal fun establish(context: Context, callback: Callback<Boolean>) {
+	internal fun establish(context: Context, priority: Priority = Priority.Balanced, callback: Callback<Boolean>) {
 		this.connectionCallback = {
 			// Clear the operations queue
 			closingConnection = false
@@ -515,6 +529,16 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 			// Calls the external connection callback
 			callback(it)
 			connectionCallback = null
+		}
+
+		// Update the connection priority
+		this.priority = priority
+
+		// Check for bluetooth connect permission
+		if (VERSION.SDK_INT >= VERSION_CODES.TIRAMISU && ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+			error("Missing permission BLUETOOTH_CONNECT!")
+			callback.invoke(false)
+			return
 		}
 
 		// HACK: Android M+ requires a transport LE in order to skip the 133 of death status when connecting
