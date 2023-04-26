@@ -68,6 +68,13 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 		private set
 
 	/**
+	 * Indicates the connection MTU, default 23
+	 * <i>Measured in Bytes</i>
+	 **/
+	var mtu: Int = 23
+		private set
+	
+	/**
 	 * Holds the discovered services
 	 **/
 	val services get() = this.genericAttributeProfile?.services?.map { BluetoothService(it) } ?: listOf()
@@ -164,7 +171,16 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 				// Update the internal rsii variable
 				if (status == BluetoothGatt.GATT_SUCCESS) {
 					log("onReadRemoteRssi: $rssi")
-					this@BluetoothConnection.rsii = rsii
+					this@BluetoothConnection.rsii = rssi
+				}
+			}
+			override fun onMtuChanged(gatt: BluetoothGatt?, mtu: Int, status: Int) {
+				super.onMtuChanged(gatt, mtu, status)
+				
+				// Update MTU value
+				if (status == BluetoothGatt.GATT_SUCCESS) {
+					log("onMtuChanged: $mtu")
+					this@BluetoothConnection.mtu = mtu
 				}
 			}
 
@@ -279,6 +295,47 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	 * @return True when successfully written the specified value
 	 **/
 	fun write(characteristic: String, message: String, charset: Charset = Charsets.UTF_8): Boolean = this.write(characteristic, message.toByteArray(charset))
+
+	/**
+	 * Request a MTU change
+	 *
+	 * @return True when successfully changed MTU
+	 **/
+	fun requestMTU(mtu: Int): Boolean {
+		this.log("Request MTU on device: ${device.address} (${mtu} bytes)")
+
+		this.genericAttributeProfile?.let { gatt ->
+			// Tries to change MTU
+			val success = gatt.requestMtu(mtu)
+			if (success) {
+				log("MTU Request success on: ${device.address}")
+				return true
+			} else {
+				log("Could not write to device ${device.address}")
+			}
+		}
+		return false
+	}
+
+	/**
+	 * Read device rssi
+	 *
+	 * @return true if successful
+	 **/
+	fun readRSSI(): Boolean {
+		this.genericAttributeProfile?.let { gatt ->
+			// Tries to change MTU
+			val success = gatt.readRemoteRssi()
+			if (success) {
+				log("Read rssi on: ${device.address}")
+				return true
+			} else {
+				log("Could not read rssi on: ${device.address}")
+			}
+		}
+		return false
+	}
+
 	// endregion
 
 	// region Value reading related methods

@@ -186,6 +186,10 @@ class SingleDeviceFragment : Fragment() {
 				ble?.scanFor(macAddress = deviceMacAddress, timeout = 20000)?.let {
 					onDeviceConnected(it)
 				}
+
+				//enable this to request new MTU
+				//connection?.requestMTU(512)
+
 			} catch (e: ScanTimeoutException) {
 				// Update variables
 				setDeviceConnectionStatus(false)
@@ -256,6 +260,9 @@ class SingleDeviceFragment : Fragment() {
 					updateStatus(false, "Read successful")
 				}
 			}
+
+			//Read remote connection rssi
+			connection?.readRSSI()
 		}
 	}
 

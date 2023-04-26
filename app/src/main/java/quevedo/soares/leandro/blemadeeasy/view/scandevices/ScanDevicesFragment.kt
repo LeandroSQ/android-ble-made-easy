@@ -1,7 +1,6 @@
 package quevedo.soares.leandro.blemadeeasy.view.scandevices
 
 import android.annotation.SuppressLint
-import android.bluetooth.le.ScanSettings
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
