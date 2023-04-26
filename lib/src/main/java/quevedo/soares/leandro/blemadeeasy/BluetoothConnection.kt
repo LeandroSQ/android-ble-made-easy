@@ -73,7 +73,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	 **/
 	var mtu: Int = 23
 		private set
-	
+
 	/**
 	 * Holds the discovered services
 	 **/
@@ -174,9 +174,10 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 					this@BluetoothConnection.rsii = rssi
 				}
 			}
+
 			override fun onMtuChanged(gatt: BluetoothGatt?, mtu: Int, status: Int) {
 				super.onMtuChanged(gatt, mtu, status)
-				
+
 				// Update MTU value
 				if (status == BluetoothGatt.GATT_SUCCESS) {
 					log("onMtuChanged: $mtu")
@@ -251,6 +252,54 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	}
 	// endregion
 
+	// region Misc
+	/**
+	 * Request a MTU change
+	 *
+	 * @return True when successfully changed MTU
+	 **/
+	fun requestMTU(mtu: Int): Boolean {
+		this.log("Request MTU on device: ${device.address} (${mtu} bytes)")
+
+		this.genericAttributeProfile?.let { gatt ->
+			// Tries to change MTU
+			val success = gatt.requestMtu(mtu)
+			if (success) {
+				log("MTU change request success on: ${device.address} (value: $mtu)")
+			} else {
+				error("Could not request MTU change on: ${device.address}")
+			}
+
+			return success
+		}
+
+		return false
+	}
+
+	/**
+	 * Requests a read of the RSSI value, which is updated on the [rsii] variable
+	 *
+	 * @return true if successful
+	 **/
+	fun readRSSI(): Boolean {
+		this.genericAttributeProfile?.let { gatt ->
+			log("Requesting rssi read on: ${device.address}")
+
+			// Tries to read RSSI
+			val success = gatt.readRemoteRssi()
+			if (success) {
+				log("RSSI read success on: ${device.address} (value: $rsii)")
+			} else {
+				error("Could not read rssi on: ${device.address}")
+			}
+
+			return success
+		}
+
+		return false
+	}
+	// endregion
+
 	// region Value writing related methods
 	/**
 	 * Performs a write operation on a specific characteristic
@@ -295,47 +344,6 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	 * @return True when successfully written the specified value
 	 **/
 	fun write(characteristic: String, message: String, charset: Charset = Charsets.UTF_8): Boolean = this.write(characteristic, message.toByteArray(charset))
-
-	/**
-	 * Request a MTU change
-	 *
-	 * @return True when successfully changed MTU
-	 **/
-	fun requestMTU(mtu: Int): Boolean {
-		this.log("Request MTU on device: ${device.address} (${mtu} bytes)")
-
-		this.genericAttributeProfile?.let { gatt ->
-			// Tries to change MTU
-			val success = gatt.requestMtu(mtu)
-			if (success) {
-				log("MTU Request success on: ${device.address}")
-				return true
-			} else {
-				log("Could not write to device ${device.address}")
-			}
-		}
-		return false
-	}
-
-	/**
-	 * Read device rssi
-	 *
-	 * @return true if successful
-	 **/
-	fun readRSSI(): Boolean {
-		this.genericAttributeProfile?.let { gatt ->
-			// Tries to change MTU
-			val success = gatt.readRemoteRssi()
-			if (success) {
-				log("Read rssi on: ${device.address}")
-				return true
-			} else {
-				log("Could not read rssi on: ${device.address}")
-			}
-		}
-		return false
-	}
-
 	// endregion
 
 	// region Value reading related methods
