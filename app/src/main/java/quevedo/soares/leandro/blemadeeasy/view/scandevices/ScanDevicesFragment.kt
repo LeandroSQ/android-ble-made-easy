@@ -1,6 +1,7 @@
 package quevedo.soares.leandro.blemadeeasy.view.scandevices
 
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -13,6 +14,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import kotlinx.coroutines.launch
 import quevedo.soares.leandro.blemadeeasy.BLE
+import quevedo.soares.leandro.blemadeeasy.R
 import quevedo.soares.leandro.blemadeeasy.adapter.BLEDeviceAdapter
 import quevedo.soares.leandro.blemadeeasy.databinding.FragmentScanDevicesBinding
 import quevedo.soares.leandro.blemadeeasy.exceptions.PermissionsDeniedException
@@ -120,8 +122,19 @@ class ScanDevicesFragment : Fragment() {
 	}
 
 	private fun setupBluetooth() {
-		this.ble = BLE(this).apply {
-			verbose = true// Optional variable for debugging purposes
+		try {
+			this.ble = BLE(this).apply {
+				verbose = true// Optional variable for debugging purposes
+			}
+		} catch (e: Exception) {
+			e.printStackTrace()
+
+			AlertDialog.Builder(this.context)
+				.setIcon(R.drawable.ic_error)
+				.setTitle("Error!")
+				.setMessage(e.message)
+				.setPositiveButton("OK") { dialog, _ -> dialog.dismiss()}
+				.show()
 		}
 	}
 

@@ -255,48 +255,55 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	// region Misc
 	/**
 	 * Request a MTU change
+	 * Note: even if this method returns true, it is possible that the other device does not accept it, so Android will fallback to the previous negotiated MTU value.
+	 * This will be reflected by the [mtu] variable.
 	 *
-	 * @return True when successfully changed MTU
+	 * @see android.Manifest.permission.BLUETOOTH_CONNECT for Android 31+
+	 *
+	 * @return True when successfully requested MTU negotiation
 	 **/
-	fun requestMTU(mtu: Int): Boolean {
-		this.log("Request MTU on device: ${device.address} (${mtu} bytes)")
-
-		this.genericAttributeProfile?.let { gatt ->
-			// Tries to change MTU
-			val success = gatt.requestMtu(mtu)
-			if (success) {
-				log("MTU change request success on: ${device.address} (value: $mtu)")
-			} else {
-				error("Could not request MTU change on: ${device.address}")
-			}
-
-			return success
+	@SuppressLint("MissingPermission")
+	fun requestMTU(bytes: Int): Boolean {
+		if (bytes < 0) {
+			this.error("MTU size should be greater than 0!")
+			return false
 		}
 
-		return false
+		if (bytes > GATT_MAX_MTU) {
+			this.warn("Requested MTU is over the recommended amount of $GATT_MAX_MTU. Are you sure?")
+		}
+
+		// Request for MTU change
+		this.log("Request MTU on device: ${device.address} (${mtu} bytes)")
+		val success = this.genericAttributeProfile?.requestMtu(mtu) ?: false
+		if (success) {
+			this.log("MTU change request success on: ${device.address} (value: $mtu)")
+		} else {
+			this.error("Could not request MTU change on: ${device.address}")
+		}
+
+		return success
 	}
 
 	/**
 	 * Requests a read of the RSSI value, which is updated on the [rsii] variable
 	 *
-	 * @return true if successful
+	 * @see android.Manifest.permission.BLUETOOTH_CONNECT for Android 31+
+	 *
+	 * @return True when successfully requested a RSSI read
 	 **/
+	@SuppressLint("MissingPermission")
 	fun readRSSI(): Boolean {
-		this.genericAttributeProfile?.let { gatt ->
-			log("Requesting rssi read on: ${device.address}")
-
-			// Tries to read RSSI
-			val success = gatt.readRemoteRssi()
-			if (success) {
-				log("RSSI read success on: ${device.address} (value: $rsii)")
-			} else {
-				error("Could not read rssi on: ${device.address}")
-			}
-
-			return success
+		// Request RSSI read
+		log("Requesting rssi read on: ${device.address}")
+		val success = this.genericAttributeProfile?.readRemoteRssi() ?: false
+		if (success) {
+			log("RSSI read success on: ${device.address} (value: $rsii)")
+		} else {
+			error("Could not read rssi on: ${device.address}")
 		}
 
-		return false
+		return success
 	}
 	// endregion
 
@@ -314,6 +321,10 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 		// TODO: Add reliable writing implementation
 		this.log("Writing to device ${device.address} (${message.size} bytes)")
 		this.beginOperation()
+
+		if (message.size > this.mtu) {
+			this.warn("Message being written exceeds MTU size!")
+		}
 
 		// Null safe let of the generic attribute profile
 		this.genericAttributeProfile?.let { gatt ->
@@ -545,6 +556,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	@SuppressLint("ObsoleteSdkInt")
 	private fun isLollipop() = VERSION.SDK_INT >= VERSION_CODES.LOLLIPOP && VERSION.SDK_INT <= VERSION_CODES.M
 
+	@SuppressLint("MissingPermission")
 	private fun startDisconnection() {
 		try {
 			this.closingConnection = true
@@ -554,6 +566,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 		}
 	}
 
+	@SuppressLint("MissingPermission")
 	private fun endDisconnection() {
 		log("Disconnected succesfully from ${device.address}!\nClosing connection...")
 
@@ -571,6 +584,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	// endregion
 
 	// region Connection handling related methods
+	@SuppressLint("MissingPermission")
 	internal fun establish(context: Context, callback: Callback<Boolean>) {
 		this.connectionCallback = {
 			// Clear the operations queue
