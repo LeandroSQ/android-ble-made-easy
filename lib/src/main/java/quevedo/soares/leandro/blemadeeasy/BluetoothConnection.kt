@@ -9,6 +9,8 @@ import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.*
+import quevedo.soares.leandro.blemadeeasy.enums.GattState
+import quevedo.soares.leandro.blemadeeasy.enums.GattStatus
 import quevedo.soares.leandro.blemadeeasy.exceptions.ConnectionClosingException
 import quevedo.soares.leandro.blemadeeasy.models.BluetoothCharacteristic
 import quevedo.soares.leandro.blemadeeasy.models.BluetoothService
@@ -120,10 +122,14 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	private fun setupGattCallback(): BluetoothGattCallback {
 		return object : BluetoothGattCallback() {
 
-			override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
-				super.onConnectionStateChange(gatt, status, newState)
+			override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, state: Int) {
+				super.onConnectionStateChange(gatt, status, state)
 
-				if (newState == BluetoothProfile.STATE_CONNECTED) {
+				val mappedStatusDescription = GattStatus.fromCode(status)
+				val mappedStateDescription = GattState.fromCode(state)
+				log("onConnectionStateChange: status $status ($mappedStatusDescription) state $state ($mappedStateDescription)")
+
+				if (state == BluetoothProfile.STATE_CONNECTED) {
 					log("Device ${device.address} connected!")
 
 					// Notifies that the connection has been established
@@ -134,7 +140,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 
 					// Starts the services discovery
 					genericAttributeProfile?.discoverServices()
-				} else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+				} else if (state == BluetoothProfile.STATE_DISCONNECTED) {
 					if (status == 133) {// HACK: Multiple reconnections handler
 						log("Found 133 connection failure! Reconnecting GATT...")
 					} else if (closingConnection) {// HACK: Workaround for Lollipop 21 and 22
@@ -172,6 +178,8 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 				if (status == BluetoothGatt.GATT_SUCCESS) {
 					log("onReadRemoteRssi: $rssi")
 					this@BluetoothConnection.rsii = rssi
+				} else {
+					error("Error while reading RSSI at ${device.address}! Status: $status")
 				}
 			}
 
@@ -182,6 +190,8 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 				if (status == BluetoothGatt.GATT_SUCCESS) {
 					log("onMtuChanged: $mtu")
 					this@BluetoothConnection.mtu = mtu
+				} else {
+					error("Error while changing MTU at ${device.address}! Status: $status")
 				}
 			}
 
