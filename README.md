@@ -411,4 +411,15 @@ ble.connect(device)?.let { connection ->
 }
 ```
 
+### MTU
+
+For write operations that require more than the default 23 bytes, you can request a MTU change, by doing the following:
+```kotlin
+ble.connect(device)?.let { connection ->
+    connection.requestMTU(bytes = 64)
+    connection.write(characteristic = "00000000-0000-0000-0000-000000000000", message = byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17)) // Imagine a really long message here :)
+    connection.close()
+}
+```
+
 _Made With <3 by Leandro Quevedo_

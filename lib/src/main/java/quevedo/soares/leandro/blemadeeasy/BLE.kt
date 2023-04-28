@@ -44,6 +44,7 @@ import kotlin.coroutines.resume
 
 internal const val DEFAULT_TIMEOUT = 10000L
 internal const val GATT_133_TIMEOUT = 600L
+internal const val GATT_MAX_MTU = 517
 
 @Suppress("unused")
 @RequiresFeature(name = PackageManager.FEATURE_BLUETOOTH_LE, enforcement = "android.content.pm.PackageManager#hasSystemFeature")

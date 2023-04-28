@@ -68,6 +68,13 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 		private set
 
 	/**
+	 * Indicates the connection MTU, default 23
+	 * <i>Measured in Bytes</i>
+	 **/
+	var mtu: Int = 23
+		private set
+
+	/**
 	 * Holds the discovered services
 	 **/
 	val services get() = this.genericAttributeProfile?.services?.map { BluetoothService(it) } ?: listOf()
@@ -164,7 +171,17 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 				// Update the internal rsii variable
 				if (status == BluetoothGatt.GATT_SUCCESS) {
 					log("onReadRemoteRssi: $rssi")
-					this@BluetoothConnection.rsii = rsii
+					this@BluetoothConnection.rsii = rssi
+				}
+			}
+
+			override fun onMtuChanged(gatt: BluetoothGatt?, mtu: Int, status: Int) {
+				super.onMtuChanged(gatt, mtu, status)
+
+				// Update MTU value
+				if (status == BluetoothGatt.GATT_SUCCESS) {
+					log("onMtuChanged: $mtu")
+					this@BluetoothConnection.mtu = mtu
 				}
 			}
 
@@ -235,6 +252,61 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	}
 	// endregion
 
+	// region Misc
+	/**
+	 * Request a MTU change
+	 * Note: even if this method returns true, it is possible that the other device does not accept it, so Android will fallback to the previous negotiated MTU value.
+	 * This will be reflected by the [mtu] variable.
+	 *
+	 * @see android.Manifest.permission.BLUETOOTH_CONNECT for Android 31+
+	 *
+	 * @return True when successfully requested MTU negotiation
+	 **/
+	@SuppressLint("MissingPermission")
+	fun requestMTU(bytes: Int): Boolean {
+		if (bytes < 0) {
+			this.error("MTU size should be greater than 0!")
+			return false
+		}
+
+		if (bytes > GATT_MAX_MTU) {
+			this.warn("Requested MTU is over the recommended amount of $GATT_MAX_MTU. Are you sure?")
+		}
+
+		// Request for MTU change
+		this.log("Request MTU on device: ${device.address} (${mtu} bytes)")
+		val success = this.genericAttributeProfile?.requestMtu(mtu) ?: false
+		if (success) {
+			this.log("MTU change request success on: ${device.address} (value: $mtu)")
+		} else {
+			this.error("Could not request MTU change on: ${device.address}")
+		}
+
+		return success
+	}
+
+	/**
+	 * Requests a read of the RSSI value, which is updated on the [rsii] variable
+	 *
+	 * @see android.Manifest.permission.BLUETOOTH_CONNECT for Android 31+
+	 *
+	 * @return True when successfully requested a RSSI read
+	 **/
+	@SuppressLint("MissingPermission")
+	fun readRSSI(): Boolean {
+		// Request RSSI read
+		log("Requesting rssi read on: ${device.address}")
+		val success = this.genericAttributeProfile?.readRemoteRssi() ?: false
+		if (success) {
+			log("RSSI read success on: ${device.address} (value: $rsii)")
+		} else {
+			error("Could not read rssi on: ${device.address}")
+		}
+
+		return success
+	}
+	// endregion
+
 	// region Value writing related methods
 	/**
 	 * Performs a write operation on a specific characteristic
@@ -249,6 +321,10 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 		// TODO: Add reliable writing implementation
 		this.log("Writing to device ${device.address} (${message.size} bytes)")
 		this.beginOperation()
+
+		if (message.size > this.mtu) {
+			this.warn("Message being written exceeds MTU size!")
+		}
 
 		// Null safe let of the generic attribute profile
 		this.genericAttributeProfile?.let { gatt ->
@@ -480,6 +556,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	@SuppressLint("ObsoleteSdkInt")
 	private fun isLollipop() = VERSION.SDK_INT >= VERSION_CODES.LOLLIPOP && VERSION.SDK_INT <= VERSION_CODES.M
 
+	@SuppressLint("MissingPermission")
 	private fun startDisconnection() {
 		try {
 			this.closingConnection = true
@@ -489,6 +566,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 		}
 	}
 
+	@SuppressLint("MissingPermission")
 	private fun endDisconnection() {
 		log("Disconnected succesfully from ${device.address}!\nClosing connection...")
 
@@ -506,6 +584,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	// endregion
 
 	// region Connection handling related methods
+	@SuppressLint("MissingPermission")
 	internal fun establish(context: Context, callback: Callback<Boolean>) {
 		this.connectionCallback = {
 			// Clear the operations queue
