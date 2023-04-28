@@ -45,11 +45,8 @@ import kotlin.coroutines.resume
 internal const val DEFAULT_TIMEOUT = 10000L
 internal const val GATT_133_TIMEOUT = 600L
 
-/** https://android.googlesource.com/platform/external/bluetooth/bluedroid/+/master/stack/include/gatt_api.h#:~:text=%23define%20GATT_MAX_MTU_SIZE%20%20%20%20%20517 */
+/** https://cs.android.com/android/platform/superproject/+/master:packages/modules/Bluetooth/system/stack/include/gatt_api.h;l=543;drc=6cf6099dcab87865e33439215e7ea0087e60c9f2#:~:text=%23define%20GATT_MAX_MTU_SIZE%20517 */
 internal const val GATT_MAX_MTU = 517
-
-/** https://android.googlesource.com/platform/external/bluetooth/bluedroid/+/master/stack/include/gatt_api.h#:~:text=%23define%20GATT_MAX_ATTR_LEN%20%20%20%20%20600 */
-internal const val GATT_MAX_ATTRIBUTE_LENGTH = 600
 
 @Suppress("unused")
 @RequiresFeature(name = PackageManager.FEATURE_BLUETOOTH_LE, enforcement = "android.content.pm.PackageManager#hasSystemFeature")

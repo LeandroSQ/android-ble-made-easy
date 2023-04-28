@@ -46,7 +46,7 @@ enum class GattStatus(val code: Int, val description: String) {
     Congested(143, "Congested"),
     CccCfgError(253, "CCC config error"),
     PrcInProgress(254, "Procedure in progress"),
-    ValueOutOfRange(255, "Value out of range");
+    ValueOutOfRange(255, "Value out of range"),
     ConnectionCancel(256, "Connection Cancelled"),
     Failure(257, "Failure");
 
@@ -57,6 +57,7 @@ enum class GattStatus(val code: Int, val description: String) {
          * @param code The code to be converted
          * @return The GattStatus for the given code
          */
-        fun fromCode(code: Int): GattStatus = values().find { it.code == code } ?? Unknown
+        fun fromCode(code: Int) = values().find { it.code == code } ?: Unknown
+
     }
 }
