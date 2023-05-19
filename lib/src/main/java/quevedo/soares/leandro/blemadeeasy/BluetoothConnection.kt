@@ -132,6 +132,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 				log("onConnectionStateChange: status $status ($mappedStatusDescription) state $state ($mappedStateDescription)")
 
 				if (state == BluetoothProfile.STATE_CONNECTED) {
+					if (status == BluetoothGatt.GATT_SUCCESS) {
 					log("Device ${device.address} connected!")
 
 					// Notifies that the connection has been established
@@ -142,6 +143,15 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 
 					// Starts the services discovery
 					this@BluetoothConnection.gatt?.discoverServices()
+					} else {
+						// Feedback of failed connection
+						GattStatus.fromCode(status).let {
+							log("Something went wrong while trying to connect... STATUS: ${it.code} - ${it.name}- ${it.description}\nForcing disconnect...")
+						}
+
+						// Start disconnection
+						startDisconnection()
+					}
 				} else if (state == BluetoothProfile.STATE_DISCONNECTED) {
 					if (status == 133) {// HACK: Multiple reconnections handler
 						log("Found 133 connection failure! Reconnecting GATT...")
