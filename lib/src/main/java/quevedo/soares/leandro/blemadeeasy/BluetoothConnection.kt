@@ -9,6 +9,8 @@ import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.*
+import quevedo.soares.leandro.blemadeeasy.enums.GattState
+import quevedo.soares.leandro.blemadeeasy.enums.GattStatus
 import quevedo.soares.leandro.blemadeeasy.exceptions.ConnectionClosingException
 import quevedo.soares.leandro.blemadeeasy.models.BluetoothCharacteristic
 import quevedo.soares.leandro.blemadeeasy.models.BluetoothService
@@ -26,7 +28,7 @@ typealias OnCharacteristicValueReadCallback<T> = (new: T?) -> Unit
 class BluetoothConnection internal constructor(private val device: BluetoothDevice) {
 
 	/* Bluetooth */
-	private var genericAttributeProfile: BluetoothGatt? = null
+	private var gatt: BluetoothGatt? = null
 	private var closingConnection: Boolean = false
 	private var connectionActive: Boolean = false
 
@@ -70,6 +72,8 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	/**
 	 * Indicates the connection MTU, default 23
 	 * <i>Measured in Bytes</i>
+	 *
+	 * @see https://cs.android.com/android/platform/superproject/+/master:packages/modules/Bluetooth/system/stack/include/gatt_api.h;l=543;drc=6cf6099dcab87865e33439215e7ea0087e60c9f2#:~:text=%23define%20GATT_DEF_BLE_MTU_SIZE%2023
 	 **/
 	var mtu: Int = 23
 		private set
@@ -77,7 +81,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	/**
 	 * Holds the discovered services
 	 **/
-	val services get() = this.genericAttributeProfile?.services?.map { BluetoothService(it) } ?: listOf()
+	val services get() = this.gatt?.services?.map { BluetoothService(it) } ?: listOf()
 
 	/** A list with all notifiable characteristics
 	 * @see observe
@@ -120,10 +124,14 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	private fun setupGattCallback(): BluetoothGattCallback {
 		return object : BluetoothGattCallback() {
 
-			override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
-				super.onConnectionStateChange(gatt, status, newState)
+			override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, state: Int) {
+				super.onConnectionStateChange(gatt, status, state)
 
-				if (newState == BluetoothProfile.STATE_CONNECTED) {
+				val mappedStatusDescription = GattStatus.fromCode(status).description
+				val mappedStateDescription = GattState.fromCode(state).description
+				log("onConnectionStateChange: status $status ($mappedStatusDescription) state $state ($mappedStateDescription)")
+
+				if (state == BluetoothProfile.STATE_CONNECTED) {
 					log("Device ${device.address} connected!")
 
 					// Notifies that the connection has been established
@@ -133,8 +141,8 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 					}
 
 					// Starts the services discovery
-					genericAttributeProfile?.discoverServices()
-				} else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+					this@BluetoothConnection.gatt?.discoverServices()
+				} else if (state == BluetoothProfile.STATE_DISCONNECTED) {
 					if (status == 133) {// HACK: Multiple reconnections handler
 						log("Found 133 connection failure! Reconnecting GATT...")
 					} else if (closingConnection) {// HACK: Workaround for Lollipop 21 and 22
@@ -172,6 +180,8 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 				if (status == BluetoothGatt.GATT_SUCCESS) {
 					log("onReadRemoteRssi: $rssi")
 					this@BluetoothConnection.rsii = rssi
+				} else {
+					error("Error while reading RSSI at ${device.address}! Status: $status")
 				}
 			}
 
@@ -182,6 +192,8 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 				if (status == BluetoothGatt.GATT_SUCCESS) {
 					log("onMtuChanged: $mtu")
 					this@BluetoothConnection.mtu = mtu
+				} else {
+					error("Error while changing MTU at ${device.address}! Status: $status")
 				}
 			}
 
@@ -275,7 +287,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 
 		// Request for MTU change
 		this.log("Request MTU on device: ${device.address} (${mtu} bytes)")
-		val success = this.genericAttributeProfile?.requestMtu(mtu) ?: false
+		val success = this.gatt?.requestMtu(mtu) ?: false
 		if (success) {
 			this.log("MTU change request success on: ${device.address} (value: $mtu)")
 		} else {
@@ -296,7 +308,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	fun readRSSI(): Boolean {
 		// Request RSSI read
 		log("Requesting rssi read on: ${device.address}")
-		val success = this.genericAttributeProfile?.readRemoteRssi() ?: false
+		val success = this.gatt?.readRemoteRssi() ?: false
 		if (success) {
 			log("RSSI read success on: ${device.address} (value: $rsii)")
 		} else {
@@ -327,7 +339,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 		}
 
 		// Null safe let of the generic attribute profile
-		this.genericAttributeProfile?.let { gatt ->
+		this.gatt?.let { gatt ->
 			// Searches for the characteristic
 			getCharacteristic(gatt, characteristic)?.let {
 				// Tries to write its value
@@ -408,7 +420,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 
 		// Null safe let of the generic attribute profile
 		this.beginOperation()
-		genericAttributeProfile?.let { gatt ->
+		gatt?.let { gatt ->
 			// Searches for the characteristic
 			this.getCharacteristic(gatt, characteristic)?.let {
 				if (!it.read(gatt)) {
@@ -506,7 +518,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 		// Generate an id for the observation
 		this.activeObservers[characteristic.lowercase()] = callback
 
-		this.genericAttributeProfile?.let { gatt ->
+		this.gatt?.let { gatt ->
 			this.getCharacteristic(gatt, characteristic)?.let {
 				if (!it.isNotifiable && it.isReadable && owner != null && coroutineScope != null) {
 					legacyObserve(owner, it, callback, interval)
@@ -544,7 +556,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	 * @param characteristic The characteristic to observe
 	 **/
 	fun stopObserving(characteristic: String) {
-		this.genericAttributeProfile?.let { gatt ->
+		this.gatt?.let { gatt ->
 			this.getCharacteristic(gatt, characteristic)?.disableNotify(gatt)
 		}
 
@@ -560,7 +572,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 	private fun startDisconnection() {
 		try {
 			this.closingConnection = true
-			this.genericAttributeProfile?.disconnect()
+			this.gatt?.disconnect()
 		} catch (e: Exception) {
 			e.printStackTrace()
 		}
@@ -574,8 +586,8 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 			this.connectionActive = false
 			this.connectionCallback?.invoke(false)
 			this.onDisconnect?.invoke()
-			this.genericAttributeProfile?.close()
-			this.genericAttributeProfile = null
+			this.gatt?.close()
+			this.gatt = null
 			this.closingConnection = false
 		} catch (e: Exception) {
 			log("Ignoring closing connection with ${device.address} exception -> ${e.message}")
@@ -597,7 +609,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 		}
 
 		// HACK: Android M+ requires a transport LE in order to skip the 133 of death status when connecting
-		this.genericAttributeProfile = if (VERSION.SDK_INT >= VERSION_CODES.M)
+		this.gatt = if (VERSION.SDK_INT >= VERSION_CODES.M)
 			this.device.connectGatt(context, true, setupGattCallback(), BluetoothDevice.TRANSPORT_LE)
 		else
 			this.device.connectGatt(context, false, setupGattCallback())

@@ -44,6 +44,8 @@ import kotlin.coroutines.resume
 
 internal const val DEFAULT_TIMEOUT = 10000L
 internal const val GATT_133_TIMEOUT = 600L
+
+/** https://cs.android.com/android/platform/superproject/+/master:packages/modules/Bluetooth/system/stack/include/gatt_api.h;l=543;drc=6cf6099dcab87865e33439215e7ea0087e60c9f2#:~:text=%23define%20GATT_MAX_MTU_SIZE%20517 */
 internal const val GATT_MAX_MTU = 517
 
 @Suppress("unused")
