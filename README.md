@@ -412,6 +412,29 @@ ble.connect(device)?.let { connection ->
 }
 ```
 
+### MTU change request
+
+For write operations that require more than the default 23 bytes, you can request a MTU change, by doing the following:
+```kotlin
+ble.connect(device)?.let { connection ->
+    connection.requestMTU(bytes = 64)
+    connection.write(characteristic = "00000000-0000-0000-0000-000000000000", message = byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17)) // Imagine a really long message here :)
+    connection.close()
+}
+```
+
+### Forcing RSSI read
+
+```kotlin
+ble.connect(device)?.let { connection ->
+    if (connection.readRSSI()) { // This will enqueue a RSSI request read
+      // Which will be reflected on 
+      Log.d("RSSI", connection.rssi)
+    }
+
+}
+```
+
 ### Sample App
 
 This repository also provides a working [Sample App](https://github.com/LeandroSQ/android-ble-made-easy/tree/master/app/src/main/java/quevedo/soares/leandro/blemadeeasy/view) which you can use as a reference.

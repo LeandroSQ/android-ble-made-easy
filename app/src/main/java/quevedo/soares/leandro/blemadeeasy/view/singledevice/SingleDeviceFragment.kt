@@ -256,12 +256,18 @@ class SingleDeviceFragment : Fragment() {
 					updateStatus(false, "Read successful")
 				}
 			}
+
+			// Read remote connection rssi
+			connection?.readRSSI()
 		}
 	}
 
 	private fun onDeviceConnected(connection: BluetoothConnection) {
 		connection.apply {
 			this@SingleDeviceFragment.connection = connection
+
+			// For larger messages, you can use this method to request a larger MTU
+			// val success = connection?.requestMTU(512)
 
 			// Define the on re-connect handler
 			onConnect = {
