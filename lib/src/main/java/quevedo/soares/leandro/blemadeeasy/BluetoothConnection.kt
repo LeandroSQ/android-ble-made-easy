@@ -156,7 +156,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 					this@BluetoothConnection.gatt?.discoverServices()
 					} else {
 						// Feedback of failed connection
-          log("Something went wrong while trying to connect... STATUS: $it\nForcing disconnect...")
+          				log("Something went wrong while trying to connect... STATUS: $mappedStatus\nForcing disconnect...")
 
 						// Start disconnection
 						startDisconnection()
@@ -169,7 +169,7 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 					} else {
 						// Notifies that the connection has been lost
 						if (connectionActive) {
-							log("Lost connection with ${device.address}")
+							log("Lost connection with ${device.address} STATUS: $mappedStatus")
 							onDisconnect?.invoke()
 							connectionActive = false
 						}
