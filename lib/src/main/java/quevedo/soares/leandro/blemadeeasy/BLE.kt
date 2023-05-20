@@ -33,6 +33,7 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.LocationSettingsRequest
 import kotlinx.coroutines.*
 import quevedo.soares.leandro.blemadeeasy.contracts.BluetoothAdapterContract
+import quevedo.soares.leandro.blemadeeasy.enums.Priority
 import quevedo.soares.leandro.blemadeeasy.exceptions.*
 import quevedo.soares.leandro.blemadeeasy.models.BLEDevice
 import quevedo.soares.leandro.blemadeeasy.typealiases.Callback
@@ -80,7 +81,11 @@ class BLE {
 			if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
 				log("[Legacy] ScanSettings: Using aggressive mode")
 				setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-				setMatchMode(ScanSettings.MATCH_MODE_AGGRESSIVE)
+
+				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+					setMatchMode(ScanSettings.MATCH_MODE_AGGRESSIVE)
+				}
+
 				setReportDelay(0L)
 			}
 
@@ -591,10 +596,10 @@ class BLE {
 	 **/
 	@SuppressLint("InlinedApi")
 	@RequiresPermission(anyOf = [permission.BLUETOOTH_ADMIN, permission.BLUETOOTH_SCAN, permission.BLUETOOTH_CONNECT])
-	fun scanForAsync(macAddress: String? = null, service: String? = null, name: String? = null, settings: ScanSettings? = null, timeout: Long = DEFAULT_TIMEOUT, onFinish: Callback<BluetoothConnection?>? = null, onError: Callback<Int>? = null) {
+	fun scanForAsync(macAddress: String? = null, service: String? = null, name: String? = null, settings: ScanSettings? = null, priority: Priority = Priority.Balanced, timeout: Long = DEFAULT_TIMEOUT, onFinish: Callback<BluetoothConnection?>? = null, onError: Callback<Int>? = null) {
 		this.coroutineScope.launch {
 			try {
-				onFinish?.invoke(scanFor(macAddress, service, name, settings, timeout))
+				onFinish?.invoke(scanFor(macAddress, service, name, settings, priority, timeout))
 			} catch (e: ScanTimeoutException) {
 				onFinish?.invoke(null)
 			} catch (e: ScanFailureException) {
@@ -625,7 +630,7 @@ class BLE {
 	 * @return A nullable [BluetoothConnection] instance, when null meaning that the specified device was not found
 	 **/
 	@SuppressLint("MissingPermission")
-	suspend fun scanFor(macAddress: String? = null, service: String? = null, name: String? = null, settings: ScanSettings? = null, timeout: Long = DEFAULT_TIMEOUT): BluetoothConnection? {
+	suspend fun scanFor(macAddress: String? = null, service: String? = null, name: String? = null, settings: ScanSettings? = null, priority: Priority = Priority.Balanced, timeout: Long = DEFAULT_TIMEOUT): BluetoothConnection? {
 		return suspendCancellableCoroutine { continuation ->
 			// Validates the arguments
 			if (macAddress == null && service == null && name == null) throw IllegalArgumentException("You need to specify at least one filter!\nBeing them: macAddress, service and name")
@@ -642,7 +647,7 @@ class BLE {
 
 						// Check if it is able to connect to the device
 						withTimeoutOrNull(timeout) {
-							connect(device)
+							connect(device, priority)
 						}?.let { connection ->
 							continuation.resume(connection)
 						}
@@ -675,7 +680,7 @@ class BLE {
 							// HACK: Adding a delay after stopping a scan and starting a connection request could solve the 133 in some cases
 							delay(GATT_133_TIMEOUT)
 
-							if (continuation.isActive) continuation.resume(connect(bleDevice))
+							if (continuation.isActive) continuation.resume(connect(bleDevice, priority))
 						}
 					},
 					onError = { errorCode ->
@@ -768,7 +773,7 @@ class BLE {
 	 * @return A nullable [BluetoothConnection], null when not successful
 	 **/
 	@RequiresPermission(permission.BLUETOOTH_CONNECT)
-	suspend fun connect(device: BluetoothDevice): BluetoothConnection? {
+	suspend fun connect(device: BluetoothDevice, priority: Priority = Priority.Balanced): BluetoothConnection? {
 		return suspendCancellableCoroutine { continuation ->
 			this.log("Trying to establish a connection with device ${device.address}...")
 
@@ -783,7 +788,7 @@ class BLE {
 			BluetoothConnection(device).also {
 				it.verbose = this.verbose
 				it.coroutineScope = this.coroutineScope
-				it.establish(this.context) { successful ->
+				it.establish(this.context, priority) { successful ->
 					if (successful) {
 						log("Connected successfully with ${device.address}!")
 						continuation.resume(it)
@@ -805,7 +810,7 @@ class BLE {
 	 **/
 	@SuppressLint("InlinedApi")
 	@RequiresPermission(permission.BLUETOOTH_CONNECT)
-	suspend fun connect(device: BLEDevice): BluetoothConnection? = this.connect(device.device)
+	suspend fun connect(device: BLEDevice, priority: Priority = Priority.Balanced): BluetoothConnection? = this.connect(device.device, priority)
 	// endregion
 
 }
