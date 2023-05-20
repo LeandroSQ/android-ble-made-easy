@@ -15,6 +15,8 @@ enum class GattState(val code: Int, val description: String) {
     Connected(2, "Connected"),
     Disconnecting(3, "Disconnecting");
 
+    override fun toString() = "Code: $code - State.$name - $description"
+
     companion object {
         /**
          * Returns the GattState for the given code

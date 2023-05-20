@@ -50,6 +50,8 @@ enum class GattStatus(val code: Int, val description: String) {
     ConnectionCancel(256, "Connection Cancelled"),
     Failure(257, "Failure");
 
+    override fun toString() = "Code: $code - Status.$name - $description"
+
     companion object {
         /**
          * Returns the GattStatus for the given code
