@@ -1,0 +1,60 @@
+name: Publish a new version for the library
+
+on:
+    push:
+        branches:
+        - master
+
+    workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v3.13.0
+        with:
+          java-version: 17
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build the library
+        run: ./gradlew lib:build
+
+      - name: Update README.md version
+        run: ./gradlew lib:updateReadmeVersion
+
+      - name: Check if the README.md version was updated correctly
+        shell: bash
+        run: |
+          FILE="README.md"
+          PATTERN="implementation 'com\.github\.LeandroSQ:android-ble-made-easy:([0-9]+\.[0-9]+\.[0-9]+)'"
+          if [[ $(cat $FILE) =~ $PATTERN ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+            echo $VERSION
+          else
+            echo "Error: Could not find version number in $FILE." >&2
+            exit 1
+          fi
+
+      - name: Publish to Jitpack
+        run: ./gradlew lib:publish
+
+      - name: Generate Documentation with Dokka
+        run: |
+          ./gradlew lib:dokkaHtml
+          echo "Deleting old documentation files"
+          rm -rf ./docs
+          echo "Moving generated documentation files"
+          mv -f lib/build/dokka/html ./docs
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4.2.5
+        with:
+          branch: gh-pages
+          folder: docs
