@@ -1,8 +1,11 @@
 package quevedo.soares.leandro.blemadeeasy.models
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
+import androidx.annotation.RequiresPermission
 import quevedo.soares.leandro.blemadeeasy.exceptions.PeripheralNotObservableException
 import java.util.*
 
@@ -20,13 +23,16 @@ data class BluetoothCharacteristic(
 		return this.characteristic.descriptors.find { it.uuid == c }
 	}
 
+	@SuppressLint("MissingPermission")
 	fun read(gatt: BluetoothGatt): Boolean = gatt.readCharacteristic(this.characteristic)
 
+	@SuppressLint("MissingPermission")
 	fun write(gatt: BluetoothGatt, value: ByteArray): Boolean {
 		this.characteristic.value = value
 		return gatt.writeCharacteristic(this.characteristic)
 	}
 
+	@SuppressLint("MissingPermission")
 	fun enableNotify(gatt: BluetoothGatt) {
 		// If the characteristic does not export the NOTIFY property, throw an exception
 		if (!this.isNotifiable) throw PeripheralNotObservableException(gatt.device.address, this.uuid.toString().lowercase())
@@ -39,6 +45,7 @@ data class BluetoothCharacteristic(
 		gatt.setCharacteristicNotification(this.characteristic, true)
 	}
 
+	@SuppressLint("MissingPermission")
 	fun disableNotify(gatt: BluetoothGatt) {
 		// If the characteristic does not export the NOTIFY property, throw an exception
 		if (!this.isNotifiable) throw PeripheralNotObservableException(gatt.device.address, this.uuid.toString().lowercase())
