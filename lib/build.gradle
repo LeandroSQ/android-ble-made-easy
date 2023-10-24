@@ -27,8 +27,7 @@ afterEvaluate {
 }
 
 android {
-    compileSdkVersion 33
-    buildToolsVersion '33.0.0'
+    compileSdk 34
 
     defaultConfig {
         minSdkVersion 21

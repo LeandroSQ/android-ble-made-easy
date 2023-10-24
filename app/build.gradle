@@ -6,8 +6,7 @@ plugins {
 }
 
 android {
-    compileSdkVersion 33
-    buildToolsVersion '33.0.0'
+    compileSdk 34
 
     defaultConfig {
         applicationId "quevedo.soares.leandro.blemadeeasy"
@@ -35,6 +34,7 @@ android {
             excludes += '/META-INF/{AL2.0,LGPL2.1,NOTICE.md,LICENSE.md}'
         }
     }
+    namespace 'quevedo.soares.leandro.blemadeeasy'
 
 }
 
