@@ -307,10 +307,10 @@ class BluetoothConnection internal constructor(private val device: BluetoothDevi
 		}
 
 		// Request for MTU change
-		this.log("Request MTU on device: ${device.address} (${mtu} bytes)")
-		val success = this.gatt?.requestMtu(mtu) ?: false
+		this.log("Request MTU on device: ${device.address} (${bytes} bytes)")
+		val success = this.gatt?.requestMtu(bytes) ?: false
 		if (success) {
-			this.log("MTU change request success on: ${device.address} (value: $mtu)")
+			this.log("MTU change request success on: ${device.address} (value: $bytes)")
 		} else {
 			this.error("Could not request MTU change on: ${device.address}")
 		}
