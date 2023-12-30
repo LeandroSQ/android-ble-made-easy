@@ -9,7 +9,7 @@ android {
     compileSdk 34
 
     defaultConfig {
-        applicationId "quevedo.soares.leandro.blemadeeasy"
+        applicationId "quevedo.soares.leandro.blemadeeasy.sampleapp"
         minSdkVersion 21
         targetSdkVersion 33
         versionCode 2
@@ -39,8 +39,8 @@ android {
             excludes += '/META-INF/{AL2.0,LGPL2.1,NOTICE.md,LICENSE.md}'
         }
     }
-    namespace 'quevedo.soares.leandro.blemadeeasy'
 
+    namespace 'quevedo.soares.leandro.blemadeeasy.sampleapp'
 }
 
 dependencies {

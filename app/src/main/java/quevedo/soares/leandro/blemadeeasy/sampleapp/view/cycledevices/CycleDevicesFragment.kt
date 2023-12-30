@@ -1,4 +1,4 @@
-package quevedo.soares.leandro.blemadeeasy.view.singledevice
+package quevedo.soares.leandro.blemadeeasy.sampleapp.view.cycledevices
 
 import android.annotation.SuppressLint
 import android.os.Bundle
@@ -7,37 +7,44 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
-import androidx.navigation.fragment.navArgs
 import kotlinx.coroutines.*
-import quevedo.soares.leandro.blemadeeasy.databinding.FragmentSingleDeviceBinding
 import quevedo.soares.leandro.blemadeeasy.BLE
 import quevedo.soares.leandro.blemadeeasy.BluetoothConnection
+import quevedo.soares.leandro.blemadeeasy.sampleapp.databinding.FragmentCycleDevicesBinding
 import quevedo.soares.leandro.blemadeeasy.exceptions.ScanTimeoutException
 
-class SingleDeviceFragmentTest : Fragment() {
+/**
+ * This is intended for testing the library and for testing purposes only
+ **/
+class CycleDevicesFragment : Fragment() {
+
+	// DEFAULT    -> 7C:9E:BD:F4:18:76
+	// FURADEIRA  -> 7C:9E:BD:F4:3F:C2
+	// CHAVETEIRA -> 7C:9E:BD:ED:A7:46
+	// CHARACTERISTIC -> "4ac8a682-9736-4e5d-932b-e9b31405049c"
 
 	/* Constants */
-	private val deviceMacAddress by lazy { this.navArguments.deviceMacAddress }
-	private val deviceCharacteristic by lazy { this.navArguments.deviceCharacteristic }
+	private val deviceCharacteristic = "4ac8a682-9736-4e5d-932b-e9b31405049c"
+	private val addresses = arrayListOf("7C:9E:BD:F4:18:76", "7C:9E:BD:F4:3F:C2", "7C:9E:BD:ED:A7:46")
+	private val delayTime = 150L
 
 	/* Navigation */
 	private val navController by lazy { findNavController() }
-	private val navArguments by navArgs<SingleDeviceFragmentArgs>()
 
 	/* Binding */
-	private lateinit var binding: FragmentSingleDeviceBinding
-	private val isDeviceConnected: MutableLiveData<Boolean> = MutableLiveData<Boolean>()
-	private val isLoading: MutableLiveData<Boolean> = MutableLiveData<Boolean>()
-	private val currentStatusText: MutableLiveData<String> = MutableLiveData<String>()
+	private lateinit var binding: FragmentCycleDevicesBinding
 
 	/* Bluetooth variables */
 	private var ble: BLE? = null
 	private var connection: BluetoothConnection? = null
 
 	/* Misc */
+	private var addressPointer = 0
+	private var scanStartTime = 0L
 	private var command: Boolean = false
 
 	// region Fragment creation related methods
@@ -51,7 +58,7 @@ class SingleDeviceFragmentTest : Fragment() {
 	}
 
 	override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-		binding = FragmentSingleDeviceBinding.inflate(inflater, container, false)
+		binding = FragmentCycleDevicesBinding.inflate(inflater, container, false)
 		return binding.root
 	}
 
@@ -67,7 +74,7 @@ class SingleDeviceFragmentTest : Fragment() {
 	override fun onDestroy() {
 		super.onDestroy()
 
-		GlobalScope.launch {
+		lifecycleScope.launch {
 			// Closes the connection with the device
 			connection?.close()
 			connection = null
@@ -85,15 +92,21 @@ class SingleDeviceFragmentTest : Fragment() {
 	}
 
 	private fun updateStatus(loading: Boolean, text: String) {
-		currentStatusText.postValue("Current status: $text")
-		isLoading.postValue(loading)
+		binding.fcdCurrentStatus.text = "Current status: $text"
+		binding.fcdClLoader.isVisible = loading
+	}
+
+	private fun setDeviceConnectionStatus(isConnected: Boolean) {
+		binding.fcdBtnToggle.isEnabled = isConnected
+		binding.fcdBtnDisconnect.isEnabled = isConnected
+		binding.fcdBtnConnect.isEnabled = !isConnected
 	}
 
 	@SuppressLint("MissingPermission")
 	private fun requestPermissions() {
 		Log.d("MainActivity", "Setting bluetooth manager up...")
 
-		GlobalScope.launch {
+		lifecycleScope.launch {
 			// Checks the bluetooth permissions
 			val permissionsGranted = ble?.verifyPermissions(rationaleRequestCallback = { next ->
 				showToast("We need the bluetooth permissions!")
@@ -132,51 +145,38 @@ class SingleDeviceFragmentTest : Fragment() {
 		}
 	}
 
-	private fun startConnection() {
-		GlobalScope.launch {
-			ble?.scanFor(macAddress = "0.0.0.0.0", timeout = 20000)?.let {
-				startReadings(it)
-			}
-		}
-	}
-
-	private fun startReadings(device: BluetoothConnection) {
-		val pollingRate = 1000L// Define the interval between the readings, in ms
-		var lastValue: String? = null
-		val characteristic = "0.0.0.0.0"// Define the characteristic to keep track of
-
-		GlobalScope.launch {
-			// Reads the characteristic from the device
-			val currentValue = device.read(characteristic, Charsets.UTF_8)
-			// Check if it has changed
-			if (lastValue != currentValue) {
-				// TODO: Call a callback or do some action when the value changes
-
-				// Update the lastValue to reflect the changes
-				lastValue = currentValue
-			}
-
-			// Waits until the next reading
-			delay(pollingRate)
-		}
-	}
-
-
-
-
 	private fun setupBinding() {
 		binding.apply {
 			// Set the on click listeners
-			fsdBtnToggle.setOnClickListener(this@SingleDeviceFragmentTest::onButtonToggleClick)
-			fsdBtnConnect.setOnClickListener(this@SingleDeviceFragmentTest::onButtonConnectClick)
-			fsdBtnDisconnect.setOnClickListener(this@SingleDeviceFragmentTest::onButtonDisconnectClick)
+			fcdBtnToggle.setOnClickListener(this@CycleDevicesFragment::onButtonToggleClick)
+			fcdBtnConnect.setOnClickListener(this@CycleDevicesFragment::onButtonConnectClick)
+			fcdBtnDisconnect.setOnClickListener(this@CycleDevicesFragment::onButtonDisconnectClick)
+		}
+	}
+
+	private fun startChronometer() {
+		lifecycleScope.launch {
+			scanStartTime = System.currentTimeMillis()
+			while (isActive) {
+				val start = System.currentTimeMillis()
+
+				val elapsed = start - scanStartTime
+				val inputSeconds = (elapsed / 1000L)
+				val s = inputSeconds % 60
+				val m = (inputSeconds / 60) % 60
+				val h = (inputSeconds / (60 * 60)) % 24
+				binding.fcdElapsedTime.text = String.format("%02d:%02d:%02d", h, m, s)
+
+				val calculationTime = System.currentTimeMillis() - start
+				delay(1000L - (calculationTime))
+			}
 		}
 	}
 	// endregion
 
 	// region Event listeners
 	private fun onButtonToggleClick(v: View) {
-		GlobalScope.launch {
+		lifecycleScope.launch {
 			// Update variables
 			updateStatus(true, "Sending data...")
 
@@ -189,6 +189,9 @@ class SingleDeviceFragmentTest : Fragment() {
 					// Update variables
 					updateStatus(false, "Sent!")
 					command = !command
+
+					delay(delayTime)
+					onButtonDisconnectClick(binding.fcdBtnDisconnect)
 				} else {
 					// Update variables
 					updateStatus(false, "Information not sent!")
@@ -198,35 +201,48 @@ class SingleDeviceFragmentTest : Fragment() {
 	}
 
 	private fun onButtonConnectClick(v: View) {
-		GlobalScope.launch {
+		lifecycleScope.launch {
 			try {
+				if (scanStartTime == 0L) startChronometer()
+
 				// Update variables
 				updateStatus(true, "Connecting...")
 
-				// Tries to connect with the provided mac address
-				ble?.scanFor(macAddress = deviceMacAddress, timeout = 20000)?.let {
-					// Set the connection listeners
+				addressPointer++
+				if (addressPointer >= addresses.size) addressPointer = 0
+
+				ble?.scanFor(macAddress = addresses[addressPointer], timeout = 20000)?.let {
 					connection = it.apply {
 						onConnect = {
+							setDeviceConnectionStatus(true)
 							// Update variables
-							isDeviceConnected.postValue(true)
 							updateStatus(false, "Conected!")
 						}
 
 						onDisconnect = {
+							setDeviceConnectionStatus(false)
 							// Update variables
-							isDeviceConnected.postValue(false)
 							updateStatus(false, "Disconnected!")
 						}
 					}
 
+					setDeviceConnectionStatus(true)
 					// Update variables
-					isDeviceConnected.postValue(true)
 					updateStatus(false, "Conected!")
+
+					delay(delayTime)
+					onButtonToggleClick(binding.fcdBtnToggle)
+				} ?: run {
+					// Update variables
+					updateStatus(false, "Could not connect!")
+					setDeviceConnectionStatus(false)
+
+					Log.e("LOGGING", "CONNECTION FAILED ON ${addresses[addressPointer]}")
+					delay((delayTime * 1.5).toLong())
+					onButtonConnectClick(binding.fcdBtnConnect)
 				}
 			} catch (e: ScanTimeoutException) {
 				// Update variables
-				isDeviceConnected.postValue(false)
 				updateStatus(false, "No device found!")
 			} catch (e: Exception) {
 				e.printStackTrace()
@@ -235,16 +251,18 @@ class SingleDeviceFragmentTest : Fragment() {
 	}
 
 	private fun onButtonDisconnectClick(v: View) {
-		GlobalScope.launch {
+		lifecycleScope.launch {
 			// Update variables
 			updateStatus(true, "Disconnecting...")
 
-			// Closes the connection
 			connection?.close()
 			connection = null
 
 			// Update variables
 			updateStatus(false, "Disconnected!")
+
+			delay(delayTime)
+			onButtonConnectClick(binding.fcdBtnConnect)
 		}
 	}
 	// endregion

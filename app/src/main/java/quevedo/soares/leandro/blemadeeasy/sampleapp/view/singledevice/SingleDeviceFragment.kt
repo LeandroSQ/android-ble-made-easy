@@ -1,4 +1,4 @@
-package quevedo.soares.leandro.blemadeeasy.view.singledevice
+package quevedo.soares.leandro.blemadeeasy.sampleapp.view.singledevice
 
 import android.annotation.SuppressLint
 import android.os.Bundle
@@ -15,8 +15,8 @@ import androidx.navigation.fragment.navArgs
 import kotlinx.coroutines.*
 import quevedo.soares.leandro.blemadeeasy.BLE
 import quevedo.soares.leandro.blemadeeasy.BluetoothConnection
-import quevedo.soares.leandro.blemadeeasy.R
-import quevedo.soares.leandro.blemadeeasy.databinding.FragmentSingleDeviceBinding
+import quevedo.soares.leandro.blemadeeasy.sampleapp.R
+import quevedo.soares.leandro.blemadeeasy.sampleapp.databinding.FragmentSingleDeviceBinding
 import quevedo.soares.leandro.blemadeeasy.exceptions.ScanTimeoutException
 import java.util.*
 

@@ -1,4 +1,4 @@
-package quevedo.soares.leandro.blemadeeasy.view
+package quevedo.soares.leandro.blemadeeasy.sampleapp.view
 
 import android.os.Bundle
 import android.os.PersistableBundle
@@ -6,8 +6,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupWithNavController
-import quevedo.soares.leandro.blemadeeasy.R
-import quevedo.soares.leandro.blemadeeasy.databinding.ActivityMainBinding
+import quevedo.soares.leandro.blemadeeasy.sampleapp.R
+import quevedo.soares.leandro.blemadeeasy.sampleapp.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 

@@ -1,4 +1,4 @@
-package quevedo.soares.leandro.blemadeeasy.view.scandevices
+package quevedo.soares.leandro.blemadeeasy.sampleapp.view.scandevices
 
 import android.annotation.SuppressLint
 import android.app.AlertDialog
@@ -14,9 +14,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import kotlinx.coroutines.launch
 import quevedo.soares.leandro.blemadeeasy.BLE
-import quevedo.soares.leandro.blemadeeasy.R
-import quevedo.soares.leandro.blemadeeasy.adapter.BLEDeviceAdapter
-import quevedo.soares.leandro.blemadeeasy.databinding.FragmentScanDevicesBinding
+import quevedo.soares.leandro.blemadeeasy.sampleapp.R
+import quevedo.soares.leandro.blemadeeasy.sampleapp.adapter.BLEDeviceAdapter
+import quevedo.soares.leandro.blemadeeasy.sampleapp.databinding.FragmentScanDevicesBinding
 import quevedo.soares.leandro.blemadeeasy.exceptions.PermissionsDeniedException
 import quevedo.soares.leandro.blemadeeasy.models.BLEDevice
 

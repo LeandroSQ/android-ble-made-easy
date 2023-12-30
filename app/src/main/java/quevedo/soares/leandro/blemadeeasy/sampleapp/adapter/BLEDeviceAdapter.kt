@@ -1,4 +1,4 @@
-package quevedo.soares.leandro.blemadeeasy.adapter
+package quevedo.soares.leandro.blemadeeasy.sampleapp.adapter
 
 import android.annotation.SuppressLint
 import android.view.LayoutInflater
@@ -6,7 +6,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import quevedo.soares.leandro.blemadeeasy.databinding.ItemBluetoothDeviceBinding
+import quevedo.soares.leandro.blemadeeasy.sampleapp.databinding.ItemBluetoothDeviceBinding
 import quevedo.soares.leandro.blemadeeasy.models.BLEDevice
 
 typealias BLEDeviceAdapterOnClickListener = (position: Int, device: BLEDevice) -> Unit
