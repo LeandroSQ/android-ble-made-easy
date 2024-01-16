@@ -437,7 +437,7 @@ ble.connect(device)?.let { connection ->
 
 ### Sample App
 
-This repository also provides a working [Sample App](https://github.com/LeandroSQ/android-ble-made-easy/tree/master/app/src/main/java/quevedo/soares/leandro/blemadeeasy/view) which you can use as a reference.
+This repository also provides a working [Sample App](https://github.com/LeandroSQ/android-ble-made-easy/tree/master/app/src/main/java/quevedo/soares/leandro/blemadeeasy/sampleapp/view) which you can use as a reference.
 
 You can clone the repo and run it on your device.
 
