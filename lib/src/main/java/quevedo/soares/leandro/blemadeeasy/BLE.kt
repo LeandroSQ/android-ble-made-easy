@@ -552,9 +552,6 @@ class BLE {
 	@SuppressLint("InlinedApi")
 	@RequiresPermission(anyOf = [permission.BLUETOOTH_ADMIN, permission.BLUETOOTH_SCAN])
 	suspend fun scan(filters: List<ScanFilter>? = null, settings: ScanSettings? = null, duration: Long = DEFAULT_TIMEOUT): Array<BLEDevice> {
-
-		scan(filters = null, settings = ScanSettings.Builder().build())
-
 		return suspendCancellableCoroutine { continuation ->
 			this.coroutineScope.launch {
 				// Validates the duration
