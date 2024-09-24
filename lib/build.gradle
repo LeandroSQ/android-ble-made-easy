@@ -55,7 +55,10 @@ android {
 
     packagingOptions {
         resources {
-            excludes += '/META-INF/{AL2.0,LGPL2.1,NOTICE.md,LICENSE.md}'
+            excludes += 'META-INF/NOTICE.md'
+            excludes += 'META-INF/AL2.0'
+            excludes += 'META-INF/LGPL2.1'
+            excludes += 'META-INF/LICENSE.md'
         }
     }
 
